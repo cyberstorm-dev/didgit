@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/allendy/src/git-attest/tmp/contracts/**)",
+      "Read(//Users/allendy/src/git-attest/src/main/typescript/apps/web/ui/**)",
+      "Read(//Users/allendy/src/git-attest/src/main/solidity/src/**)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

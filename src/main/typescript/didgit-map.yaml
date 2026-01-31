@@ -1,0 +1,18 @@
+kind: compute#urlMap
+name: didgit-map
+defaultService: https://www.googleapis.com/compute/v1/projects/cyberstorm-dev/global/backendBuckets/didgit-site
+hostRules:
+- hosts:
+  - didgit.dev
+  pathMatcher: pm1
+pathMatchers:
+- name: pm1
+  defaultService: https://www.googleapis.com/compute/v1/projects/cyberstorm-dev/global/backendBuckets/didgit-site
+  pathRules:
+  - paths:
+    - /
+    urlRedirect:
+      pathRedirect: /index.html
+      httpsRedirect: true
+      redirectResponseCode: MOVED_PERMANENTLY_DEFAULT
+

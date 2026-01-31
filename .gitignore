@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+out/
+.next/
+
+# Environment files (secrets)
+.env
+.env.*
+!.env.example
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.un~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Solidity
+cache/
+artifacts/
+broadcast/
+forge-cache/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Misc
+tmp/
+.turbo/

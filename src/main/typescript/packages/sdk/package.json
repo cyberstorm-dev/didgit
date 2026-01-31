@@ -1,0 +1,21 @@
+{
+  "name": "@git-attest/sdk",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "viem": "^2.37.8",
+    "@git-attest/abi": "*",
+    "@git-attest/config": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.2"
+  }
+}
+

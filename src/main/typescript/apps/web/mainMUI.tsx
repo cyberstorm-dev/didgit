@@ -1,0 +1,20 @@
+import React from 'react';
+import './polyfills/webcrypto';
+import { createRoot } from 'react-dom/client';
+import { AppMUI } from './ui/AppMUI';
+import { GithubAuthProvider } from './auth/useGithub';
+import { Web3AuthProvider } from './web3auth/Web3AuthProvider';
+import { ThemeProvider } from './providers/ThemeProvider';
+import './index.css';
+
+const el = document.getElementById('root');
+if (!el) throw new Error('Root element not found');
+createRoot(el).render(
+  <ThemeProvider>
+    <Web3AuthProvider>
+      <GithubAuthProvider>
+        <AppMUI />
+      </GithubAuthProvider>
+    </Web3AuthProvider>
+  </ThemeProvider>
+);

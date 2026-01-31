@@ -1,0 +1,17 @@
+[project]
+name = "git-attest"
+version = "0.0.1"
+description = "Analytics and indexing tools for git-attest"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "web3>=6.20.0",
+  "pandas>=2.2.0",
+  "python-dotenv>=1.0.1",
+]
+
+[tool.uv]
+dev-dependencies = [
+  "pytest>=8.0.0",
+]
+

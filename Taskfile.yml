@@ -1,0 +1,87 @@
+version: "3"
+
+vars:
+  APP_DIR: '{{.APP_DIR | default "src/main/typescript/apps/web"}}'
+  BUCKET: '{{.BUCKET | default "didgit.dev"}}'
+
+tasks:
+  install:
+    desc: Install npm deps in APP_DIR
+    dir: '{{.APP_DIR}}'
+    cmds:
+      - npm install
+
+  dev:
+    desc: Start development server in APP_DIR
+    dir: '{{.APP_DIR}}'
+    cmds:
+      - npm run dev
+
+  build:
+    desc: Build static assets (no typecheck) in APP_DIR
+    dir: '{{.APP_DIR}}'
+    cmds:
+      - npm run build:static
+
+  deploy:bucket:
+    desc: Configure bucket website settings (index/error)
+    cmds:
+      - gcloud storage buckets update gs://{{.BUCKET}} --web-error-page=index.html
+
+  deploy:rsync:
+    desc: Upload dist/ to GCS bucket
+    dir: '{{.APP_DIR}}'
+    cmds:
+      - gcloud storage rsync -r dist gs://{{.BUCKET}}
+
+  deploy:
+    desc: Build and deploy to GCS bucket
+    cmds:
+      - task: build
+      - task: deploy:bucket
+      - task: deploy:rsync
+
+  deploy:clean:
+    desc: Clean bucket then deploy (destructive)
+    cmds:
+      - gcloud storage rm -r gs://{{.BUCKET}}/** || true
+      - task: deploy
+  ts:build-packages:
+    desc: Build TypeScript packages (abi, sdk, config)
+    cmds:
+      - |
+        (cd src/main/typescript/packages/abi && npm ci || npm install && npm run build) || true
+      - |
+        (cd src/main/typescript/packages/config && npm ci || npm install && npm run build) || true
+      - |
+        (cd src/main/typescript/packages/sdk && npm ci || npm install && npm run build) || true
+
+  sol:build:
+    desc: Build Foundry contracts
+    dir: src/main/solidity
+    cmds:
+      - ~/.foundry/bin/forge build
+
+  sol:test:
+    desc: Run Foundry tests
+    dir: src/main/solidity
+    cmds:
+      - ~/.foundry/bin/forge test -vvv
+
+  sol:deploy:proxy:
+    desc: Deploy proxy contract first (one-time setup)
+    dir: src/main/solidity
+    cmds:
+      - ~/.foundry/bin/forge script script/DeployProxy.s.sol:DeployProxy --rpc-url $BASE_SEPOLIA_RPC_URL --broadcast --verify --slow --legacy || ~/.foundry/bin/forge script script/DeployProxy.s.sol:DeployProxy --rpc-url $BASE_SEPOLIA_RPC_URL --broadcast
+
+  sol:deploy:resolver:
+    desc: Deploy resolver implementation and update proxy (requires proxy deployed first)
+    dir: src/main/solidity
+    cmds:
+      - source .env && PROXY_ADDRESS=0x4092543CBba00A105d4974616bEF71CB4b2AF9a5 PROXY_ADMIN_ADDRESS=0x1FFd5EA80c746ED8DE070F529090DED4861a6f4B ~/.foundry/bin/forge script script/Deploy.s.sol:Deploy --rpc-url "$BASE_SEPOLIA_RPC_URL" --broadcast --verify --slow --legacy || source .env && PROXY_ADDRESS=0x4092543CBba00A105d4974616bEF71CB4b2AF9a5 PROXY_ADMIN_ADDRESS=0x1FFd5EA80c746ED8DE070F529090DED4861a6f4B ~/.foundry/bin/forge script script/Deploy.s.sol:Deploy --rpc-url "$BASE_SEPOLIA_RPC_URL" --broadcast
+
+  sol:deploy:
+    desc: Deploy complete system (proxy + resolver)
+    cmds:
+      - task: sol:deploy:proxy
+      - task: sol:deploy:resolver
