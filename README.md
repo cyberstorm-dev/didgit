@@ -66,7 +66,7 @@ Each commit to registered repos gets attested on-chain, building your verifiable
 | Contract | Address |
 |----------|---------|
 | EAS | `0x4200000000000000000000000000000000000021` |
-| UsernameUniqueResolver | `0x20c1cb4313efc28d325d3a893a68ca8c82911b0c` |
+| UsernameUniqueResolverV2 | `0xf20e5d52acf8fc64f5b456580efa3d8e4dcf16c7` |
 | Identity Schema | `0x6ba0509...` |
 | Contribution Schema | `0x7425c71...` |
 
