@@ -86,6 +86,10 @@ export default defineConfig({
   define: {
     global: 'globalThis',
   },
+  build: {
+    outDir: '../../../../../public',
+    emptyDir: true,
+  },
   server: {
     port: 5173,
     strictPort: true,
