@@ -1,4 +1,4 @@
-import 'dotenv/config';
+// dotenv not needed - vite handles .env natively
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
