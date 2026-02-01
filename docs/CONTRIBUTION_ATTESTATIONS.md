@@ -74,8 +74,55 @@ await eas.attest({
 });
 ```
 
+## Repository Registration
+
+Before attesting contributions, repos must be registered on-chain via the UsernameUniqueResolver.
+
+**Resolver (Base Sepolia):** `0x7419150b821a507ef60c618d03c26517310ee633`
+
+### Setting Patterns
+
+Users register repository patterns (supports wildcards):
+
+```javascript
+// Register all repos under an org
+await resolver.setRepositoryPattern(
+  'github.com',           // domain
+  'cyberstorm-nisto',     // identifier (GitHub username)
+  'cyberstorm-dev',       // namespace (org/owner)
+  '*',                    // name (* = wildcard)
+  true                    // enabled
+);
+
+// Register specific repo
+await resolver.setRepositoryPattern(
+  'github.com',
+  'cyberstorm-nisto', 
+  'cyberstorm-dev',
+  'didgit',
+  true
+);
+```
+
+### Checking Registration
+
+Before attesting, verify the repo is registered:
+
+```javascript
+const enabled = await resolver.isRepositoryEnabled(
+  'cyberstorm-nisto',  // owner
+  'github.com',        // domain
+  'cyberstorm-nisto',  // identifier
+  'cyberstorm-dev',    // namespace
+  'didgit'             // name
+);
+```
+
+This prevents accidental attestation of private or unregistered repos.
+
 ## Roadmap
 
+- [x] On-chain repo registration via UsernameUniqueResolver
 - [ ] Integrate contribution attestations into didgit.dev UI
 - [ ] Add PR and issue attestation support
 - [ ] Build contribution leaderboard / reputation dashboard
