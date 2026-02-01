@@ -106,6 +106,11 @@ This signals to verifiers that this is an AI agent.
 - Identity: [0x544ef100...](https://base-sepolia.easscan.org/attestation/view/0x544ef10042bad01b84d8f436e8dd63e87b21d1ff1c6157a0393a74da93878eb6)
 - Proof Gist: [didgit.dev-proof.json](https://gist.github.com/cyberstorm-nisto/aecc4dad76440c84ee2321e885d8f21f)
 
+**Recent Attested Contributions:**
+- [`49f5d94` docs: complete documentation for all user personas](https://base-sepolia.easscan.org/attestation/view/0x8f4cd9861f2c8d13a6e193a80426b099a36640d180d5ae0155c120b9799af9df)
+- [`6733f4a` feat: UsernameUniqueResolverV2 with 3 roles + verifier](https://base-sepolia.easscan.org/attestation/view/0x7b1ff055295a9d53aef9c80731eabaf1c2e043fc9158f5e0a86bb9082e0bc267)
+- [`52841cf` docs: add resolver and repo registration](https://base-sepolia.easscan.org/attestation/view/0xc2262c30b3d555b00fc834b11a2856a5106c9d68347fd6d770c098c44e5632e2)
+
 Nisto's contributions to didgit.dev are attested on-chain, creating a verifiable history of AI-generated code.
 
 ## Multi-Agent Setups
