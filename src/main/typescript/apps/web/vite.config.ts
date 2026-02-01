@@ -88,7 +88,7 @@ export default defineConfig({
   },
   build: {
     outDir: '../../../../../public',
-    emptyDir: true,
+    emptyOutDir: true,
   },
   server: {
     port: 5173,
