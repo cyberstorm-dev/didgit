@@ -19,6 +19,7 @@ import { VerifyPanel } from './VerifyPanel';
 import { StatsCard } from './StatsCard';
 import { AgentOnboardingCard } from './AgentOnboardingCard';
 import { RegistryBrowser } from './RegistryBrowser';
+import { EnableDelegatedAttestations } from './EnableDelegatedAttestations';
 
 export const RegisterPage: React.FC = () => {
   const { connected } = useWallet();
@@ -33,6 +34,9 @@ export const RegisterPage: React.FC = () => {
 
       {/* Registry Browser - Browse all identities */}
       <RegistryBrowser />
+
+      {/* Automated Attestations Setup */}
+      <EnableDelegatedAttestations />
 
       {/* Verification Panel - Search existing attestations */}
       <Accordion elevation={1} sx={{ mb: 2 }}>
