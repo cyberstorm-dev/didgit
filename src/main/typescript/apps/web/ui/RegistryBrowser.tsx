@@ -106,7 +106,7 @@ async function fetchIdentities(
   const attestations = data?.data?.attestations ?? [];
   const total = data?.data?.aggregateAttestation?._count?._all ?? 0;
 
-  const identities: Identity[] = attestations.map((att: any) => {
+  const allIdentities: Identity[] = attestations.map((att: any) => {
     let username = 'unknown';
     try {
       const decoded = JSON.parse(att.decodedDataJson);
@@ -126,6 +126,17 @@ async function fetchIdentities(
     };
   });
 
+  // Dedupe by username - keep only the latest attestation per username
+  const seenUsernames = new Map<string, Identity>();
+  for (const identity of allIdentities) {
+    const existing = seenUsernames.get(identity.username);
+    if (!existing || new Date(identity.attestedAt) > new Date(existing.attestedAt)) {
+      seenUsernames.set(identity.username, identity);
+    }
+  }
+  const identities = Array.from(seenUsernames.values());
+
+  // Note: total count may be higher than deduped count
   return { identities, total };
 }
 
