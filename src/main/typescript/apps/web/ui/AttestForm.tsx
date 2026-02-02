@@ -3,8 +3,9 @@ import { z } from 'zod';
 import { useWallet } from '../wallet/WalletContext';
 import { useGithubAuth } from '../auth/useGithub';
 import { appConfig } from '../utils/config';
-import { attestIdentityBinding, encodeBindingData, EASAddresses } from '../utils/eas';
-import { Hex, verifyMessage } from 'viem';
+import { attestIdentityBinding, encodeBindingData, EASAddresses, getChainConfig } from '../utils/eas';
+import { Hex, verifyMessage, createPublicClient, http } from 'viem';
+import { UsernameUniqueResolverABI } from '@didgit/abi';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Alert } from '../components/ui/alert';
@@ -105,6 +106,35 @@ export const AttestForm: React.FC = () => {
     if (!signature) return setError('Sign your GitHub username first');
     if (!gistUrl) return setError('Create a proof gist first');
     if (!easReady) return setError('EAS contract address not configured (set VITE_EAS_ADDRESS)');
+
+    // Check if identity already exists in resolver (prevent duplicates - Issue #9)
+    const resolverAddress = cfg.RESOLVER_ADDRESS as `0x${string}` | undefined;
+    if (resolverAddress) {
+      try {
+        const publicClient = createPublicClient({
+          chain: getChainConfig(cfg.CHAIN_ID),
+          transport: http()
+        });
+        const existingOwner = await publicClient.readContract({
+          address: resolverAddress,
+          abi: UsernameUniqueResolverABI,
+          functionName: 'getIdentityOwner',
+          args: ['github.com', parsed.data.github_username]
+        }) as `0x${string}`;
+        
+        if (existingOwner && existingOwner !== '0x0000000000000000000000000000000000000000') {
+          // Identity exists - check if it's this wallet
+          if (existingOwner.toLowerCase() !== address?.toLowerCase()) {
+            return setError(`Username "${parsed.data.github_username}" is already registered to a different wallet (${existingOwner.slice(0, 6)}...${existingOwner.slice(-4)}). Each username can only be linked to one wallet.`);
+          }
+          // Same wallet - warn but allow (might be re-attesting)
+          console.warn('Identity already registered to this wallet, proceeding with re-attestation');
+        }
+      } catch (e) {
+        // If resolver check fails, log but don't block (resolver might not be deployed)
+        console.warn('Could not check resolver for existing identity:', e);
+      }
+    }
 
     // Resolve account address (EIP-7702 may reuse EOA address)
     const accountAddress = smartAddress ?? address;
