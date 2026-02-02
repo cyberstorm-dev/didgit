@@ -15,6 +15,8 @@ export interface AttestCommitRequest {
   commitHash: string;
   repoOwner: string;
   repoName: string;
+  author: string;
+  message: string;
 }
 
 export async function attestCommit(req: AttestCommitRequest): Promise<{ success: boolean; attestationUid?: Hex; txHash?: Hex; error?: string }> {
@@ -33,16 +35,16 @@ export async function attestCommit(req: AttestCommitRequest): Promise<{ success:
     });
 
     // Encode contribution data according to schema
-    // Schema: bytes32 commitHash, string repoName, uint64 timestamp
-    // Git commit SHAs are 20 bytes (40 hex chars), need to pad to 32 bytes for bytes32
-    const commitHashPadded = ('0x' + req.commitHash + '0'.repeat(24)) as Hex; // Pad with 12 bytes of zeros
-    
+    // Schema: string repo, string commitHash, string author, string message, uint64 timestamp, bytes32 identityUid
     const contributionData = encodeAbiParameters(
-      parseAbiParameters('bytes32, string, uint64'),
+      parseAbiParameters('string, string, string, string, uint64, bytes32'),
       [
-        commitHashPadded,
-        `${req.repoOwner}/${req.repoName}`,
-        BigInt(Math.floor(Date.now() / 1000))
+        `${req.repoOwner}/${req.repoName}`, // repo
+        req.commitHash, // commitHash (as string, full 40 char SHA)
+        req.author, // author
+        req.message, // message
+        BigInt(Math.floor(Date.now() / 1000)), // timestamp
+        req.identityAttestationUid // identityUid
       ]
     );
 

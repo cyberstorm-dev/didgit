@@ -131,7 +131,9 @@ export class AttestationService {
           identityAttestationUid: user.identityAttestationUid,
           commitHash: commit.sha,
           repoOwner: repo.owner,
-          repoName: repo.name
+          repoName: repo.name,
+          author: commit.author.name || commit.author.username || githubUsername,
+          message: commit.message
         });
 
         if (result.success) {

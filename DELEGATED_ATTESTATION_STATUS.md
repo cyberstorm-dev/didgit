@@ -69,6 +69,16 @@
 
 **Key insight:** Verifier submits UserOp, but UserOp.sender is user's wallet. Gas comes from user, attestation owned by user. AllowlistValidator allows this because verifier signed it.
 
+## ✅ MVP WORKING!
+
+Backend service successfully attesting commits on Base Sepolia:
+- Example TX: https://sepolia.basescan.org/tx/0xe542deabb5de895f168fd9c6cb2c21b0c54887f4d59e2b5b35a42de549926aee
+- Service runs on 30min cron
+- Auto-detects commits via GitHub API
+- Matches to registered users
+- Submits EAS attestations
+- **Current limitation: Verifier pays gas (not user)**
+
 ## What's Left to Build
 
 ### 1. Permission Grant UI (`RegisterPage.tsx`)
