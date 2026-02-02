@@ -15,6 +15,7 @@ import { useWallet } from '../wallet/WalletContext';
 import { GithubSection } from './GithubSection';
 import { AttestForm } from './AttestForm';
 import { VerifyPanel } from './VerifyPanel';
+import { StatsCard } from './StatsCard';
 
 export const RegisterPage: React.FC = () => {
   const { connected } = useWallet();
@@ -22,6 +23,9 @@ export const RegisterPage: React.FC = () => {
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
+      {/* Registry Stats */}
+      <StatsCard />
+
       {/* Wallet and GitHub Connection */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
         <Grid item xs={12} md={6}>
