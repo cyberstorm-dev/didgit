@@ -2,6 +2,8 @@ import React, { useMemo, useState } from 'react';
 import { z } from 'zod';
 import { useWallet } from '../wallet/WalletContext';
 import { useGithubAuth } from '../auth/useGithub';
+import { useGitlabAuth } from '../auth/useGitlab';
+import { createPublicSnippet } from '../auth/gitlab';
 import { appConfig } from '../utils/config';
 import { attestIdentityBinding, encodeBindingData, EASAddresses } from '../utils/eas';
 import { Hex, verifyMessage } from 'viem';
@@ -9,23 +11,37 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Alert } from '../components/ui/alert';
 
+type Platform = 'github' | 'gitlab';
+
 const formSchema = z.object({
-  github_username: z.string().min(1).max(39),
+  username: z.string().min(1).max(39),
 });
 
 export const AttestForm: React.FC = () => {
   const { address, smartAddress, signMessage, connected, getWalletClient, getSmartWalletClient, canAttest, isContract, balanceWei, refreshOnchain, ensureAa, lastError } = useWallet();
-  const { user, token } = useGithubAuth();
+  const github = useGithubAuth();
+  const gitlab = useGitlabAuth();
   const cfg = useMemo(() => appConfig(), []);
   const easReady = !!cfg.EAS_ADDRESS;
   const isMainnet = cfg.CHAIN_ID === 8453;
   const blockExplorerUrl = isMainnet ? 'https://basescan.org' : 'https://sepolia.basescan.org';
   const easExplorerUrl = isMainnet ? 'https://base.easscan.org' : 'https://base-sepolia.easscan.org';
-  const [form, setForm] = useState({ github_username: '' });
-  const [gistUrl, setGistUrl] = useState<string | null>(null);
+  
+  // Platform selection
+  const [platform, setPlatform] = useState<Platform>('github');
+  const domain = platform === 'github' ? 'github.com' : 'gitlab.com';
+  
+  // Get current auth state based on platform
+  const currentAuth = platform === 'github' ? github : gitlab;
+  const currentUser = platform === 'github' ? github.user : gitlab.user;
+  const currentToken = platform === 'github' ? github.token : gitlab.token;
+  const currentUsername = platform === 'github' ? github.user?.login : gitlab.user?.username;
+  
+  const [form, setForm] = useState({ username: '' });
+  const [proofUrl, setProofUrl] = useState<string | null>(null);
   const [signature, setSignature] = useState<Hex | null>(null);
   const [busySign, setBusySign] = useState(false);
-  const [busyGist, setBusyGist] = useState(false);
+  const [busyProof, setBusyProof] = useState(false);
   const [busyAttest, setBusyAttest] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<Hex | null>(null);
@@ -35,12 +51,29 @@ export const AttestForm: React.FC = () => {
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
   };
 
-  // Pre-fill username from GitHub auth and force lowercase
+  // Pre-fill username from auth and force lowercase
   React.useEffect(() => {
-    if (user?.login) {
-      setForm((f) => ({ ...f, github_username: user.login.toLowerCase() }));
+    const username = currentUsername;
+    if (username) {
+      setForm((f) => ({ ...f, username: username.toLowerCase() }));
     }
-  }, [user?.login]);
+  }, [currentUsername]);
+
+  // Reset state when platform changes
+  React.useEffect(() => {
+    setProofUrl(null);
+    setSignature(null);
+    setTxHash(null);
+    setAttestationUid(null);
+    setError(null);
+    // Update username from new platform's auth
+    const username = platform === 'github' ? github.user?.login : gitlab.user?.username;
+    if (username) {
+      setForm({ username: username.toLowerCase() });
+    } else {
+      setForm({ username: '' });
+    }
+  }, [platform, github.user?.login, gitlab.user?.username]);
 
   const doSign = async () => {
     setError(null);
@@ -49,7 +82,7 @@ export const AttestForm: React.FC = () => {
     if (!parsed.success) return setError(parsed.error.errors[0]?.message ?? 'Invalid input');
     try {
       setBusySign(true);
-      const msg = `github.com:${parsed.data.github_username}`;
+      const msg = `${domain}:${parsed.data.username}`;
       const sig = await signMessage({ message: msg });
       // verify matches connected wallet
       const ok = await verifyMessage({ message: msg, signature: sig, address });
@@ -90,7 +123,7 @@ export const AttestForm: React.FC = () => {
       address: resolverAddress,
       abi: UsernameUniqueResolverABI,
       functionName: 'setRepoPattern',
-      args: ['github.com', username, '*', '*', true],
+      args: [domain, username, '*', '*', true],
       gas: BigInt(200000),
     });
   };
@@ -102,8 +135,8 @@ export const AttestForm: React.FC = () => {
     if (!connected || !address) return setError('Connect wallet first');
     const parsed = formSchema.safeParse(form);
     if (!parsed.success) return setError(parsed.error.errors[0]?.message ?? 'Invalid input');
-    if (!signature) return setError('Sign your GitHub username first');
-    if (!gistUrl) return setError('Create a proof gist first');
+    if (!signature) return setError(`Sign your ${platform === 'github' ? 'GitHub' : 'GitLab'} username first`);
+    if (!proofUrl) return setError(`Create a proof ${platform === 'github' ? 'gist' : 'snippet'} first`);
     if (!easReady) return setError('EAS contract address not configured (set VITE_EAS_ADDRESS)');
 
     // Resolve account address (EIP-7702 may reuse EOA address)
@@ -122,12 +155,12 @@ export const AttestForm: React.FC = () => {
     if (!addrPattern.test(easEnv.contract as string)) return setError('EAS contract address is invalid');
 
     const data = {
-      domain: 'github.com',
-      username: parsed.data.github_username,
+      domain,
+      username: parsed.data.username,
       wallet: address!, // Use EOA address instead of smart address
-      message: `github.com:${parsed.data.github_username}`,
+      message: `${domain}:${parsed.data.username}`,
       signature: signature,
-      proof_url: gistUrl,
+      proof_url: proofUrl,
     };
 
     try {
@@ -157,7 +190,7 @@ export const AttestForm: React.FC = () => {
 
         // Auto-set default */* pattern after successful attestation
         try {
-          await setDefaultRepoPattern(parsed.data.github_username, aaClient);
+          await setDefaultRepoPattern(parsed.data.username, aaClient);
         } catch (e) {
           // Don't fail the whole attestation if pattern setting fails
           console.warn('Failed to set default repository pattern:', e);
@@ -169,7 +202,7 @@ export const AttestForm: React.FC = () => {
         easContract: ((): string | null => { try { return EASAddresses.forChain(cfg.CHAIN_ID, cfg).contract as unknown as string; } catch { return null; } })(),
         hasAaClient: !!(await getSmartWalletClient()),
         hasSig: !!signature,
-        hasGist: !!gistUrl,
+        hasProof: !!proofUrl,
       };
       setError(`${(e as Error).message}\ncontext=${JSON.stringify(ctx)}`);
     } finally {
@@ -177,61 +210,128 @@ export const AttestForm: React.FC = () => {
     }
   };
 
-  const createGist = async () => {
+  const createProof = async () => {
     setError(null);
-    if (!token) return setError('Connect GitHub first');
+    if (!currentToken) return setError(`Connect ${platform === 'github' ? 'GitHub' : 'GitLab'} first`);
+    
     try {
-      setBusyGist(true);
+      setBusyProof(true);
       // Create JSON proof content
       const proofData = {
-        domain: 'github.com',
-        username: form.github_username,
+        domain,
+        username: form.username,
         wallet: address ?? '',
-        message: `github.com:${form.github_username}`,
+        message: `${domain}:${form.username}`,
         signature: signature ?? '<sign in app>',
         chain_id: cfg.CHAIN_ID,
         schema_uid: cfg.EAS_SCHEMA_UID,
       };
       const content = JSON.stringify(proofData, null, 2);
-      const res = await fetch('https://api.github.com/gists', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token.access_token}`, 'Content-Type': 'application/json', Accept: 'application/vnd.github+json' },
-        body: JSON.stringify({
-          description: 'GitHub activity attestation proof',
-          public: true,
-          files: { ['didgit.dev-proof.json']: { content } },
-        }),
-      });
-      if (!res.ok) throw new Error('Failed to create gist');
-      const json = await res.json();
-      if (json.html_url) setGistUrl(json.html_url as string);
+
+      if (platform === 'github' && github.token) {
+        // Create GitHub Gist
+        const res = await fetch('https://api.github.com/gists', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${github.token.access_token}`,
+            'Content-Type': 'application/json',
+            Accept: 'application/vnd.github+json',
+          },
+          body: JSON.stringify({
+            description: 'GitHub activity attestation proof',
+            public: true,
+            files: { ['didgit.dev-proof.json']: { content } },
+          }),
+        });
+        if (!res.ok) throw new Error('Failed to create gist');
+        const json = await res.json();
+        if (json.html_url) setProofUrl(json.html_url as string);
+      } else if (platform === 'gitlab' && gitlab.token) {
+        // Create GitLab Snippet
+        const result = await createPublicSnippet(gitlab.token, {
+          title: 'didgit.dev identity proof',
+          description: 'GitLab identity attestation proof for didgit.dev',
+          filename: 'didgit.dev-proof.json',
+          content,
+        });
+        setProofUrl(result.web_url);
+      }
     } catch (e) {
       setError((e as Error).message);
     } finally {
-      setBusyGist(false);
+      setBusyProof(false);
     }
   };
 
+  const platformName = platform === 'github' ? 'GitHub' : 'GitLab';
+  const proofTypeName = platform === 'github' ? 'Gist' : 'Snippet';
+
   return (
     <section>
-      <h3 className="text-lg font-semibold mb-2">Create GitHub Identity Attestation</h3>
+      <h3 className="text-lg font-semibold mb-2">Create Identity Attestation</h3>
+      
+      {/* Platform Selector */}
+      <div className="mb-4">
+        <label className="text-sm text-gray-600 block mb-1">Platform</label>
+        <div className="flex gap-1 p-1 bg-gray-100 rounded-md w-fit">
+          <button
+            onClick={() => setPlatform('github')}
+            className={`px-4 py-1.5 rounded text-sm font-medium transition-colors ${
+              platform === 'github'
+                ? 'bg-white shadow text-gray-900'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            GitHub
+          </button>
+          <button
+            onClick={() => setPlatform('gitlab')}
+            className={`px-4 py-1.5 rounded text-sm font-medium transition-colors ${
+              platform === 'gitlab'
+                ? 'bg-white shadow text-gray-900'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            GitLab
+          </button>
+        </div>
+      </div>
+
+      {/* Connection Status */}
+      {!currentUser && (
+        <Alert className="mb-4">
+          Connect {platformName} first using the connection panel above.
+        </Alert>
+      )}
+
       <div className="max-w-2xl space-y-3">
         <div>
-          <label className="text-sm text-gray-600">GitHub Username (will sign "github.com:username")</label>
-          <Input name="github_username" value={form.github_username} onChange={onChange} placeholder="Connect GitHub first" disabled readOnly />
+          <label className="text-sm text-gray-600">{platformName} Username (will sign "{domain}:username")</label>
+          <Input
+            name="username"
+            value={form.username}
+            onChange={onChange}
+            placeholder={`Connect ${platformName} first`}
+            disabled
+            readOnly
+          />
         </div>
         <div className="flex gap-2 flex-wrap items-center">
-          <Button onClick={doSign} disabled={busySign || !address || !form.github_username}>
-            {busySign ? 'Signing…' : `Sign "github.com:${form.github_username}"`}
+          <Button onClick={doSign} disabled={busySign || !address || !form.username}>
+            {busySign ? 'Signing…' : `Sign "${domain}:${form.username}"`}
           </Button>
-          {!gistUrl ? (
-            <Button onClick={createGist} disabled={!token || busyGist} variant="outline">
-              {busyGist ? 'Creating Gist…' : 'Create didgit.dev-proof.json'}
+          {!proofUrl ? (
+            <Button onClick={createProof} disabled={!currentToken || busyProof} variant="outline">
+              {busyProof ? `Creating ${proofTypeName}…` : `Create didgit.dev-proof.json`}
             </Button>
           ) : (
             <Button variant="outline" disabled>didgit.dev-proof.json Created</Button>
           )}
-          <Button onClick={doAttest} disabled={!signature || !gistUrl || busyAttest || !easReady || !(smartAddress || address)} variant="secondary">
+          <Button
+            onClick={doAttest}
+            disabled={!signature || !proofUrl || busyAttest || !easReady || !(smartAddress || address)}
+            variant="secondary"
+          >
             {busyAttest ? 'Submitting…' : 'Submit Attestation'}
           </Button>
         </div>
@@ -246,9 +346,10 @@ export const AttestForm: React.FC = () => {
         {isContract && balanceWei !== null && balanceWei === 0n && (
           <Alert>AA wallet has 0 balance. Fund it to proceed.</Alert>
         )}
-        {/* Readiness checks moved into Wallet card for clearer UX */}
-        {gistUrl && (
-          <div className="text-sm">Proof Gist: <a className="text-blue-600 underline" href={gistUrl} target="_blank" rel="noreferrer">{gistUrl}</a></div>
+        {proofUrl && (
+          <div className="text-sm">
+            Proof {proofTypeName}: <a className="text-blue-600 underline" href={proofUrl} target="_blank" rel="noreferrer">{proofUrl}</a>
+          </div>
         )}
         {signature && (
           <div className="text-xs text-gray-500">Signature: <code>{signature}</code></div>
