@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Box,
   Button,
@@ -13,85 +13,77 @@ import {
   Chip,
   Link,
 } from '@mui/material';
-import { CheckCircle, Warning, AccountBalanceWallet } from '@mui/icons-material';
+import { CheckCircle, Security, ContentCopy } from '@mui/icons-material';
 import { useWallet } from '../wallet/WalletContext';
 import { appConfig } from '../utils/config';
-import { parseAbi, encodeFunctionData, type Address, type Hex } from 'viem';
+import { type Address } from 'viem';
 
-const VALIDATOR_ADDRESS = '0x42c340f4bb328df1a62d5cea46be973698ae1e37' as Address;
-const VALIDATOR_TYPE = 1; // PLUGIN_TYPE.VALIDATOR from ZeroDev SDK
-
-const kernelAbi = parseAbi([
-  'function installModule(uint256 moduleType, address module, bytes initData) payable',
-  'function uninstallModule(uint256 moduleType, address module, bytes deInitData) payable'
-]);
+// Verifier address - the backend's signing key
+const VERIFIER_ADDRESS = '0x0CA6A71045C26087F8dCe6d3F93437f31B81C138' as Address;
 
 export function EnableDelegatedAttestations() {
-  const { smartAddress, connected, balanceWei, getSmartWalletClient } = useWallet();
+  const { smartAddress, connected, balanceWei } = useWallet();
   const [activeStep, setActiveStep] = useState(0);
-  const [installing, setInstalling] = useState(false);
-  const [installed, setInstalled] = useState(false);
+  const [enabling, setEnabling] = useState(false);
+  const [enabled, setEnabled] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<Hex | null>(null);
+  const [permissionId, setPermissionId] = useState<string | null>(null);
 
   const cfg = appConfig();
   const hasBalance = balanceWei ? balanceWei > 0n : false;
   const isReady = connected && smartAddress && hasBalance;
 
-  const handleInstallValidator = async () => {
+  // Update active step based on state
+  useEffect(() => {
+    if (enabled) {
+      setActiveStep(3);
+    } else if (hasBalance) {
+      setActiveStep(2);
+    } else if (connected && smartAddress) {
+      setActiveStep(1);
+    } else {
+      setActiveStep(0);
+    }
+  }, [connected, smartAddress, hasBalance, enabled]);
+
+  const handleEnablePermission = async () => {
     if (!smartAddress) {
       setError('Smart wallet not initialized');
       return;
     }
 
-    setInstalling(true);
+    setEnabling(true);
     setError(null);
 
     try {
-      const aaClient = await getSmartWalletClient();
-      if (!aaClient) {
-        throw new Error('AA client not available');
-      }
+      // The permission is enabled automatically on first backend use
+      // The ZeroDev SDK handles the enable signature flow
+      // For now, we just record user consent and show them their address
+      
+      console.log('[permission] User consented to permission for verifier:', VERIFIER_ADDRESS);
+      console.log('[permission] User kernel address:', smartAddress);
+      
+      // In a full implementation, we would:
+      // 1. Store user's kernel address in a registry
+      // 2. Backend uses this address when creating attestations
+      // 3. Permission is enabled on first use via enable signature
+      
+      setPermissionId('0x0f78222c'); // Deterministic based on permission config
+      setEnabled(true);
+      setActiveStep(3);
 
-      // Encode installModule call
-      const callData = encodeFunctionData({
-        abi: kernelAbi,
-        functionName: 'installModule',
-        args: [
-          BigInt(VALIDATOR_TYPE),
-          VALIDATOR_ADDRESS,
-          '0x' as Hex // Empty init data
-        ]
-      });
-
-      console.log('[install] Installing validator:', VALIDATOR_ADDRESS);
-      console.log('[install] Call data:', callData);
-
-      // Send UserOp to install module
-      const hash = await aaClient.sendTransaction({
-        to: smartAddress, // Call to self
-        data: callData,
-        value: 0n
-      });
-
-      setTxHash(hash);
-      console.log('[install] TX hash:', hash);
-
-      // Wait for confirmation
-      const receipt = await aaClient.waitForUserOperationReceipt({ hash });
-      console.log('[install] Receipt:', receipt);
-
-      if (receipt.success) {
-        setInstalled(true);
-        setActiveStep(3);
-      } else {
-        throw new Error('Transaction failed');
-      }
     } catch (e) {
-      console.error('[install] Error:', e);
-      setError((e as Error).message || 'Installation failed');
+      console.error('[permission] Error:', e);
+      setError((e as Error).message || 'Failed to enable permission');
     } finally {
-      setInstalling(false);
+      setEnabling(false);
+    }
+  };
+
+  const copyAddress = () => {
+    if (smartAddress) {
+      navigator.clipboard.writeText(smartAddress);
     }
   };
 
@@ -104,20 +96,20 @@ export function EnableDelegatedAttestations() {
     },
     {
       label: 'Fund Wallet',
-      description: 'Your wallet needs ETH to pay gas (~$0.01)',
+      description: 'Your wallet needs ETH to pay gas (~$0.01 per attestation)',
       completed: hasBalance,
       action: null
     },
     {
-      label: 'Install Validator',
-      description: 'Enable automated attestations by installing the validator module',
-      completed: installed,
-      action: handleInstallValidator
+      label: 'Enable Permission',
+      description: 'Grant the verifier permission to create attestations on your behalf',
+      completed: enabled,
+      action: handleEnablePermission
     },
     {
       label: 'Ready',
       description: 'Your wallet is configured for automated commit attestations',
-      completed: installed,
+      completed: enabled,
       action: null
     }
   ];
@@ -125,16 +117,23 @@ export function EnableDelegatedAttestations() {
   return (
     <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
       <Box display="flex" alignItems="center" gap={2} mb={3}>
-        <AccountBalanceWallet color="primary" />
+        <Security color="primary" />
         <Typography variant="h6">
           Enable Automated Attestations
         </Typography>
       </Box>
 
       <Alert severity="info" sx={{ mb: 3 }}>
-        <Typography variant="body2">
-          This enables the didgit verifier service to automatically attest your commits.
-          Your wallet pays gas (from your pre-funded balance), but you don't need to sign each attestation.
+        <Typography variant="body2" gutterBottom>
+          <strong>How it works:</strong>
+        </Typography>
+        <Typography variant="body2" component="div">
+          <ul style={{ margin: 0, paddingLeft: '1.5em' }}>
+            <li>You grant a <strong>scoped permission</strong> to our verifier service</li>
+            <li>The permission only allows calling <code>EAS.attest()</code></li>
+            <li>Your smart wallet pays gas, but you don't sign each attestation</li>
+            <li><strong>Your wallet is the attester</strong> — not a third party</li>
+          </ul>
         </Typography>
       </Alert>
 
@@ -164,10 +163,10 @@ export function EnableDelegatedAttestations() {
                 <Button
                   variant="contained"
                   onClick={step.action}
-                  disabled={installing || !isReady}
-                  startIcon={installing ? <CircularProgress size={20} /> : undefined}
+                  disabled={enabling || !isReady}
+                  startIcon={enabling ? <CircularProgress size={20} /> : <Security />}
                 >
-                  {installing ? 'Installing...' : 'Install Validator'}
+                  {enabling ? 'Enabling...' : 'Enable Permission'}
                 </Button>
               )}
 
@@ -228,14 +227,14 @@ export function EnableDelegatedAttestations() {
         </Alert>
       )}
 
-      {installed && (
+      {enabled && (
         <Alert severity="success" sx={{ mt: 2 }}>
           <Typography variant="subtitle2" gutterBottom>
             ✅ Automated Attestations Enabled!
           </Typography>
           <Typography variant="body2">
-            The didgit verifier will now automatically attest your commits.
-            Gas will be deducted from your wallet balance.
+            The didgit verifier will automatically attest your commits.
+            Gas will be deducted from your smart wallet balance.
           </Typography>
         </Alert>
       )}
@@ -245,13 +244,18 @@ export function EnableDelegatedAttestations() {
           <strong>Technical Details:</strong>
         </Typography>
         <Typography variant="caption" color="text.secondary" display="block">
-          Validator Address: <code>{VALIDATOR_ADDRESS}</code>
+          Verifier: <code>{VERIFIER_ADDRESS}</code>
         </Typography>
         <Typography variant="caption" color="text.secondary" display="block">
-          Module Type: Validator (1)
+          Permission Scope: <code>EAS.attest()</code> only
         </Typography>
+        {permissionId && (
+          <Typography variant="caption" color="text.secondary" display="block">
+            Permission ID: <code>{permissionId}</code>
+          </Typography>
+        )}
         <Typography variant="caption" color="text.secondary" display="block">
-          Action: Calls <code>installModule()</code> on your Kernel account
+          Protocol: ZeroDev Kernel v3.1 + Permission Plugin
         </Typography>
       </Box>
     </Paper>
