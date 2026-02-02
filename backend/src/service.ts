@@ -1,6 +1,6 @@
 import { createPublicClient, http, type Address, type Hex, parseAbi } from 'viem';
 import { baseSepolia } from 'viem/chains';
-import { getRecentCommits, matchCommitToGitHubUser, type CommitInfo } from './github';
+import { getRecentCommits, matchCommitToGitHubUser, listOrgRepos, listUserRepos, type CommitInfo } from './github';
 import { attestCommitWithKernel, type UserKernelInfo } from './attest-with-kernel';
 
 const RESOLVER_ADDRESS = '0xf20e5d52acf8fc64f5b456580efa3d8e4dcf16c7' as Address;
@@ -22,6 +22,7 @@ interface RegisteredUser {
   walletAddress: Address;         // User's EOA
   kernelAddress: Address;         // User's Kernel smart account
   identityAttestationUid: Hex;
+  repoGlobs: string[];            // e.g., ["cyberstorm-dev/*", "cyberstorm-nisto/*"]
 }
 
 interface RepoToWatch {
@@ -50,28 +51,60 @@ export class AttestationService {
     
     console.log('[service] Fetching registered users...');
     
-    // TODO: Query EAS via GraphQL or events
-    // For testing, return known user
+    // TODO: Query EAS via GraphQL or events + repo registry
+    // For testing, return known user with repo globs
     return [
       {
         githubUsername: 'cyberstorm-nisto',
         walletAddress: '0x5B6441B4FF0AA470B1aEa11807F70FB98428BAEd' as Address,
         kernelAddress: '0x2Ce0cE887De4D0043324C76472f386dC5d454e96' as Address,
-        identityAttestationUid: '0x90687e9e96de20f386d72c9d84b5c7a641a8476da58a77e610e2a1a1a5769cdf' as Hex
+        identityAttestationUid: '0x90687e9e96de20f386d72c9d84b5c7a641a8476da58a77e610e2a1a1a5769cdf' as Hex,
+        repoGlobs: ['cyberstorm-dev/*', 'cyberstorm-nisto/*']
       }
     ];
   }
 
   async getReposToWatch(users: RegisteredUser[]): Promise<RepoToWatch[]> {
-    // Query resolver for each user's repo patterns
-    // For MVP, hardcode known repos
+    console.log('[service] Resolving repo globs...');
     
-    console.log('[service] Getting repos to watch...');
+    const repos: RepoToWatch[] = [];
+    const seen = new Set<string>();
     
-    return [
-      { owner: 'cyberstorm-dev', name: 'didgit' },
-      { owner: 'cyberstorm-nisto', name: 'nisto-backlog' }
-    ];
+    for (const user of users) {
+      for (const glob of user.repoGlobs) {
+        // Parse glob: "owner/*" or "owner/repo"
+        const [owner, repoPattern] = glob.split('/');
+        
+        if (repoPattern === '*') {
+          // Wildcard: fetch all repos for org/user
+          console.log(`[service] Fetching repos for ${owner}/*`);
+          
+          // Try as org first, then as user
+          let orgRepos = await listOrgRepos(owner);
+          if (orgRepos.length === 0) {
+            orgRepos = await listUserRepos(owner);
+          }
+          
+          for (const repo of orgRepos) {
+            const key = `${repo.owner}/${repo.name}`;
+            if (!seen.has(key)) {
+              seen.add(key);
+              repos.push(repo);
+            }
+          }
+        } else {
+          // Specific repo
+          const key = `${owner}/${repoPattern}`;
+          if (!seen.has(key)) {
+            seen.add(key);
+            repos.push({ owner, name: repoPattern });
+          }
+        }
+      }
+    }
+    
+    console.log(`[service] Watching ${repos.length} repos`);
+    return repos;
   }
 
   async checkCommitsAlreadyAttested(commitShas: string[]): Promise<Set<string>> {

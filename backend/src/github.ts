@@ -91,3 +91,75 @@ export function matchCommitToGitHubUser(commit: CommitInfo): string | null {
   // For now, just return null if no username
   return null;
 }
+
+/**
+ * List all public repos in an organization
+ */
+export async function listOrgRepos(org: string): Promise<{ owner: string; name: string }[]> {
+  const octokit = new Octokit({ auth: GITHUB_TOKEN });
+
+  try {
+    const repos: { owner: string; name: string }[] = [];
+    let page = 1;
+    
+    while (true) {
+      const { data } = await octokit.repos.listForOrg({
+        org,
+        type: 'public',
+        per_page: 100,
+        page
+      });
+      
+      if (data.length === 0) break;
+      
+      repos.push(...data.map(r => ({ owner: org, name: r.name })));
+      page++;
+      
+      if (data.length < 100) break;
+    }
+    
+    return repos;
+  } catch (e: any) {
+    if (e.status === 404) {
+      console.log(`[github] Org ${org} not found or not accessible`);
+      return [];
+    }
+    throw e;
+  }
+}
+
+/**
+ * List repos for a user
+ */
+export async function listUserRepos(username: string): Promise<{ owner: string; name: string }[]> {
+  const octokit = new Octokit({ auth: GITHUB_TOKEN });
+
+  try {
+    const repos: { owner: string; name: string }[] = [];
+    let page = 1;
+    
+    while (true) {
+      const { data } = await octokit.repos.listForUser({
+        username,
+        type: 'public',
+        per_page: 100,
+        page
+      });
+      
+      if (data.length === 0) break;
+      
+      repos.push(...data.map(r => ({ owner: username, name: r.name })));
+      page++;
+      
+      if (data.length < 100) break;
+    }
+    
+    return repos;
+  } catch (e: any) {
+    if (e.status === 404) {
+      console.log(`[github] User ${username} not found`);
+      return [];
+    }
+    throw e;
+  }
+}
