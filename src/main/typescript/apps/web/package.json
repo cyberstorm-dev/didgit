@@ -22,6 +22,7 @@
     "@web3auth/ethereum-provider": "^9.7.0",
     "@web3auth/no-modal": "^9.7.0",
     "@zerodev/ecdsa-validator": "^5.4.9",
+    "@zerodev/permissions": "^5.6.3",
     "@zerodev/sdk": "^5.5.2",
     "assert": "^2.1.0",
     "buffer": "^6.0.3",
