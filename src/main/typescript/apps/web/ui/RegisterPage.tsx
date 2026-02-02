@@ -20,6 +20,7 @@ import { StatsCard } from './StatsCard';
 import { AgentOnboardingCard } from './AgentOnboardingCard';
 import { RegistryBrowser } from './RegistryBrowser';
 import { EnableDelegatedAttestations } from './EnableDelegatedAttestations';
+import { Leaderboards } from './Leaderboards';
 
 export const RegisterPage: React.FC = () => {
   const { connected } = useWallet();
@@ -28,6 +29,9 @@ export const RegisterPage: React.FC = () => {
     <Container maxWidth="lg" sx={{ py: 4 }}>
       {/* Registry Stats */}
       <StatsCard />
+
+      {/* Leaderboards */}
+      <Leaderboards />
 
       {/* Agent Onboarding - Primary CTA */}
       <AgentOnboardingCard />
