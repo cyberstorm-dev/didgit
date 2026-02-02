@@ -29,16 +29,45 @@
 7. Gas paid from user's pre-funded wallet
 ```
 
-## Current Blocker
+## Final Architecture (Confirmed with Allen)
 
-**Verifier key mismatch:**
-- Deployed ResolverV2 (`0xf20e5d52acf8fc64f5b456580efa3d8e4dcf16c7`) has verifier: `0x0CA6A71045C26087F8dCe6d3F93437f31B81C138`
-- Private key in `~/.openclaw/secrets/git-attest/solidity.env` derives to: `0xa11CE9cF23bDDF504871Be93A2d257D200c05649`
+### Constraints
+1. Verifier operates on cron (auto-detect commits)
+2. Attestation paid from registrant's wallet
+3. Registrant does nothing post-registration
+4. Registrant configures their repos
+5. **Registrant is tx submitter** (owns attestation, can revoke)
 
-These don't match. Need either:
-1. The actual private key for `0x0CA6...` (if it exists)
-2. Permission to update the resolver's verifier address to `0xa11CE...`
-3. Fresh deployment with matching keys
+### Implementation
+
+**AllowlistValidator.sol:**
+- Deployed once with verifier address hardcoded
+- Validator checks: "signature from verifier? allow"
+- Trust verifier's signature (no on-chain oracle needed)
+- Static allowlist (part of ops deployment)
+
+**User flow:**
+1. Register identity (existing flow)
+2. Create Kernel wallet (existing)
+3. Fund wallet with ETH for gas
+4. Enable AllowlistValidator on Kernel account (one-time setup)
+5. Done - verifier handles rest
+
+**Verifier service (cron):**
+1. Watch registered repos for new commits
+2. Detect commits by registered users
+3. Validate: commit exists, author matches identity
+4. Sign attestation data with verifier private key
+5. Create UserOp for user's Kernel wallet:
+   - sender: user's wallet address
+   - callData: execute(EAS.attest(...))
+   - signature: verifier's signature
+6. Submit UserOp to bundler
+7. Bundler executes → user's wallet validates → EAS.attest called
+8. Gas deducted from user's wallet
+9. User owns attestation (can revoke directly)
+
+**Key insight:** Verifier submits UserOp, but UserOp.sender is user's wallet. Gas comes from user, attestation owned by user. AllowlistValidator allows this because verifier signed it.
 
 ## What's Left to Build
 
