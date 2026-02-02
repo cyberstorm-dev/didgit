@@ -1,4 +1,4 @@
-import { createPublicClient, http, type Address, type Hex, parseAbi, encodeFunctionData } from 'viem';
+import { createPublicClient, http, type Address, type Hex, parseAbi, encodeFunctionData, encodeAbiParameters, parseAbiParameters } from 'viem';
 import { baseSepolia } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 
@@ -33,18 +33,18 @@ export async function attestCommit(req: AttestCommitRequest): Promise<{ success:
     });
 
     // Encode contribution data according to schema
+    // Schema: bytes32 commitHash, string repoName, uint64 timestamp
     // Git commit SHAs are 20 bytes (40 hex chars), need to pad to 32 bytes for bytes32
     const commitHashPadded = ('0x' + req.commitHash + '0'.repeat(24)) as Hex; // Pad with 12 bytes of zeros
     
-    const contributionData = encodeFunctionData({
-      abi: parseAbi(['function encode(bytes32 commitHash, string repoName, uint64 timestamp) returns (bytes)']),
-      functionName: 'encode',
-      args: [
+    const contributionData = encodeAbiParameters(
+      parseAbiParameters('bytes32, string, uint64'),
+      [
         commitHashPadded,
         `${req.repoOwner}/${req.repoName}`,
         BigInt(Math.floor(Date.now() / 1000))
       ]
-    }).slice(10) as Hex; // Remove function selector
+    );
 
     // Create attestation request
     const attestationRequest = {
