@@ -18,6 +18,7 @@ import { AttestForm } from './AttestForm';
 import { VerifyPanel } from './VerifyPanel';
 import { StatsCard } from './StatsCard';
 import { AgentOnboardingCard } from './AgentOnboardingCard';
+import { RegistryBrowser } from './RegistryBrowser';
 
 export const RegisterPage: React.FC = () => {
   const { connected } = useWallet();
@@ -29,6 +30,9 @@ export const RegisterPage: React.FC = () => {
 
       {/* Agent Onboarding - Primary CTA */}
       <AgentOnboardingCard />
+
+      {/* Registry Browser - Browse all identities */}
+      <RegistryBrowser />
 
       {/* Verification Panel - Search existing attestations */}
       <Accordion elevation={1} sx={{ mb: 2 }}>
