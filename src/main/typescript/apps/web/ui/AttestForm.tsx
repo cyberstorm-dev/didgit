@@ -29,7 +29,13 @@ export const AttestForm: React.FC = () => {
   
   // Platform selection
   const [platform, setPlatform] = useState<Platform>('github');
-  const domain = platform === 'github' ? 'github.com' : 'gitlab.com';
+  const [customDomain, setCustomDomain] = useState<string>('');
+  const [useCustomDomain, setUseCustomDomain] = useState(false);
+  
+  // Determine domain based on platform and custom domain setting
+  const domain = platform === 'github' 
+    ? 'github.com' 
+    : (useCustomDomain && customDomain.trim() ? customDomain.trim() : 'gitlab.com');
   
   // Get current auth state based on platform
   const currentAuth = platform === 'github' ? github : gitlab;
@@ -66,6 +72,8 @@ export const AttestForm: React.FC = () => {
     setTxHash(null);
     setAttestationUid(null);
     setError(null);
+    setUseCustomDomain(false);
+    setCustomDomain('');
     // Update username from new platform's auth
     const username = platform === 'github' ? github.user?.login : gitlab.user?.username;
     if (username) {
@@ -296,6 +304,32 @@ export const AttestForm: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Self-hosted GitLab option */}
+      {platform === 'gitlab' && (
+        <div className="mb-4 space-y-2">
+          <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={useCustomDomain}
+              onChange={(e) => setUseCustomDomain(e.target.checked)}
+              className="rounded border-gray-300"
+            />
+            Self-hosted GitLab instance
+          </label>
+          {useCustomDomain && (
+            <Input
+              value={customDomain}
+              onChange={(e) => setCustomDomain(e.target.value)}
+              placeholder="gitlab.example.com"
+              className="max-w-xs"
+            />
+          )}
+          <p className="text-xs text-gray-500">
+            Domain: <code className="bg-gray-100 px-1 rounded">{domain}</code>
+          </p>
+        </div>
+      )}
 
       {/* Connection Status */}
       {!currentUser && (

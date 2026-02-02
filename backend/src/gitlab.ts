@@ -18,7 +18,7 @@ export interface CommitInfo {
   repo: {
     owner: string;
     name: string;
-    projectPath: string; // GitLab uses full path like "owner/repo"
+    projectPath?: string; // GitLab uses full path like "owner/repo" (optional for GitHub compat)
   };
 }
 
