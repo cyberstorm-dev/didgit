@@ -1,7 +1,7 @@
 import { createPublicClient, http, type Address, type Hex, parseAbi } from 'viem';
 import { baseSepolia } from 'viem/chains';
 import { getRecentCommits, matchCommitToGitHubUser, type CommitInfo } from './github';
-import { attestCommit } from './attest';
+import { attestCommitWithKernel, type UserKernelInfo } from './attest-with-kernel';
 
 const RESOLVER_ADDRESS = '0xf20e5d52acf8fc64f5b456580efa3d8e4dcf16c7' as Address;
 const EAS_ADDRESS = '0x4200000000000000000000000000000000000021' as Address;
@@ -19,7 +19,8 @@ const easAbi = parseAbi([
 
 interface RegisteredUser {
   githubUsername: string;
-  walletAddress: Address;
+  walletAddress: Address;         // User's EOA
+  kernelAddress: Address;         // User's Kernel smart account
   identityAttestationUid: Hex;
 }
 
@@ -55,6 +56,7 @@ export class AttestationService {
       {
         githubUsername: 'cyberstorm-nisto',
         walletAddress: '0x5B6441B4FF0AA470B1aEa11807F70FB98428BAEd' as Address,
+        kernelAddress: '0x2Ce0cE887De4D0043324C76472f386dC5d454e96' as Address,
         identityAttestationUid: '0x90687e9e96de20f386d72c9d84b5c7a641a8476da58a77e610e2a1a1a5769cdf' as Hex
       }
     ];
@@ -125,9 +127,12 @@ export class AttestationService {
 
         console.log(`[service] Attesting commit ${commit.sha.slice(0, 8)} by ${githubUsername}...`);
 
-        // Attest the commit
-        const result = await attestCommit({
-          userWalletAddress: user.walletAddress,
+        // Attest the commit via user's Kernel (permission-based)
+        const result = await attestCommitWithKernel({
+          user: {
+            kernelAddress: user.kernelAddress,
+            userEOA: user.walletAddress
+          },
           identityAttestationUid: user.identityAttestationUid,
           commitHash: commit.sha,
           repoOwner: repo.owner,
