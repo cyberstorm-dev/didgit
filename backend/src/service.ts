@@ -93,7 +93,20 @@ export class AttestationService {
     
     try {
       // Get recent commits since last check
-      const commits = await getRecentCommits(repo.owner, repo.name, this.lastCheckTime);
+      let commits;
+      try {
+        commits = await getRecentCommits(repo.owner, repo.name, this.lastCheckTime);
+      } catch (e: any) {
+        if (e.status === 404) {
+          console.log(`[service] Skipped ${repo.owner}/${repo.name}: not found or private`);
+          return 0;
+        }
+        if (e.status === 403) {
+          console.log(`[service] Skipped ${repo.owner}/${repo.name}: access denied`);
+          return 0;
+        }
+        throw e;
+      }
       
       console.log(`[service] Found ${commits.length} commits since ${this.lastCheckTime.toISOString()}`);
       
