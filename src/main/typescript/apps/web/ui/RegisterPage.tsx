@@ -13,7 +13,7 @@ import {
 import { ExpandMore, Warning } from '@mui/icons-material';
 import { AAWalletStatus } from './AAWalletStatus';
 import { useWallet } from '../wallet/WalletContext';
-import { GithubSection } from './GithubSection';
+import { PlatformSection } from './PlatformSection';
 import { AttestForm } from './AttestForm';
 import { VerifyPanel } from './VerifyPanel';
 import { StatsCard } from './StatsCard';
@@ -83,7 +83,7 @@ export const RegisterPage: React.FC = () => {
             </Grid>
             <Grid item xs={12} md={6}>
               <Paper elevation={2} sx={{ p: 3, height: '100%' }}>
-                <GithubSection />
+                <PlatformSection />
               </Paper>
             </Grid>
           </Grid>

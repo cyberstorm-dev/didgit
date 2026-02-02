@@ -1,7 +1,11 @@
 import { createPublicClient, http, type Address, type Hex, parseAbi } from 'viem';
 import { baseSepolia } from 'viem/chains';
-import { getRecentCommits, matchCommitToGitHubUser, listOrgRepos, listUserRepos, type CommitInfo } from './github';
+import { getRecentCommits as getGitHubCommits, matchCommitToGitHubUser, listOrgRepos, listUserRepos, type CommitInfo as GitHubCommitInfo } from './github';
+import { getRecentCommits as getGitLabCommits, listUserProjects as listGitLabUserProjects, listGroupProjects as listGitLabGroupProjects, matchCommitToGitLabUser, type CommitInfo as GitLabCommitInfo } from './gitlab';
 import { attestCommitWithKernel, type UserKernelInfo } from './attest-with-kernel';
+
+// Union type for commits from either platform
+type CommitInfo = GitHubCommitInfo | GitLabCommitInfo;
 
 const RESOLVER_ADDRESS = '0xf20e5d52acf8fc64f5b456580efa3d8e4dcf16c7' as Address;
 const EAS_ADDRESS = '0x4200000000000000000000000000000000000021' as Address;
@@ -20,7 +24,8 @@ const easAbi = parseAbi([
 ]);
 
 interface RegisteredUser {
-  githubUsername: string;
+  domain: string;                 // 'github.com' or 'gitlab.com' (or custom GitLab domain)
+  username: string;               // Username on the platform
   walletAddress: Address;         // User's EOA
   kernelAddress: Address;         // User's Kernel smart account
   identityAttestationUid: Hex;
@@ -28,8 +33,10 @@ interface RegisteredUser {
 }
 
 interface RepoToWatch {
+  domain: string;                 // 'github.com' or 'gitlab.com' etc
   owner: string;
   name: string;
+  projectPath?: string;           // For GitLab: full path like 'group/subgroup/repo'
 }
 
 export class AttestationService {
@@ -107,34 +114,38 @@ export class AttestationService {
 
       // Build registered users
       const users: RegisteredUser[] = [];
-      const seenUsernames = new Set<string>();
+      const seenIdentities = new Set<string>(); // domain:username
 
       for (const att of identities) {
         try {
           const decoded = JSON.parse(att.decodedDataJson);
           const usernameField = decoded.find((d: any) => d.name === 'username');
+          const domainField = decoded.find((d: any) => d.name === 'domain');
           const username = usernameField?.value?.value;
+          const domain = domainField?.value?.value || 'github.com'; // Default to github.com for backward compat
           
-          if (!username || seenUsernames.has(username.toLowerCase())) continue;
-          seenUsernames.add(username.toLowerCase());
+          const identityKey = `${domain}:${username}`.toLowerCase();
+          if (!username || seenIdentities.has(identityKey)) continue;
+          seenIdentities.add(identityKey);
 
           const repoGlobs = globsByIdentity.get(att.id.toLowerCase()) || [];
           
           // Only include users with repo globs registered
           if (repoGlobs.length === 0) {
-            console.log(`[service] Skipping ${username}: no repo globs registered`);
+            console.log(`[service] Skipping ${domain}:${username}: no repo globs registered`);
             continue;
           }
 
           users.push({
-            githubUsername: username,
+            domain,
+            username,
             walletAddress: att.recipient as Address,
             kernelAddress: '0x2Ce0cE887De4D0043324C76472f386dC5d454e96' as Address, // TODO: lookup from registry
             identityAttestationUid: att.id as Hex,
             repoGlobs
           });
 
-          console.log(`[service] Found user: ${username} with globs: ${repoGlobs.join(', ')}`);
+          console.log(`[service] Found user: ${domain}:${username} with globs: ${repoGlobs.join(', ')}`);
         } catch {}
       }
 
@@ -152,33 +163,61 @@ export class AttestationService {
     const seen = new Set<string>();
     
     for (const user of users) {
+      const domain = user.domain;
+      const isGitLab = domain.includes('gitlab') || (domain !== 'github.com' && domain !== 'bitbucket.org');
+      
       for (const glob of user.repoGlobs) {
         // Parse glob: "owner/*" or "owner/repo"
         const [owner, repoPattern] = glob.split('/');
         
         if (repoPattern === '*') {
           // Wildcard: fetch all repos for org/user
-          console.log(`[service] Fetching repos for ${owner}/*`);
+          console.log(`[service] Fetching repos for ${domain}:${owner}/*`);
           
-          // Try as org first, then as user
-          let orgRepos = await listOrgRepos(owner);
-          if (orgRepos.length === 0) {
-            orgRepos = await listUserRepos(owner);
-          }
-          
-          for (const repo of orgRepos) {
-            const key = `${repo.owner}/${repo.name}`;
-            if (!seen.has(key)) {
-              seen.add(key);
-              repos.push(repo);
+          if (isGitLab) {
+            // GitLab: try as group first, then as user
+            let projects = await listGitLabGroupProjects(owner);
+            if (projects.length === 0) {
+              projects = await listGitLabUserProjects(owner);
+            }
+            
+            for (const project of projects) {
+              const key = `${domain}:${project.projectPath}`;
+              if (!seen.has(key)) {
+                seen.add(key);
+                repos.push({
+                  domain,
+                  owner: project.owner,
+                  name: project.name,
+                  projectPath: project.projectPath
+                });
+              }
+            }
+          } else {
+            // GitHub: try as org first, then as user
+            let orgRepos = await listOrgRepos(owner);
+            if (orgRepos.length === 0) {
+              orgRepos = await listUserRepos(owner);
+            }
+            
+            for (const repo of orgRepos) {
+              const key = `${domain}:${repo.owner}/${repo.name}`;
+              if (!seen.has(key)) {
+                seen.add(key);
+                repos.push({ domain, owner: repo.owner, name: repo.name });
+              }
             }
           }
         } else {
           // Specific repo
-          const key = `${owner}/${repoPattern}`;
+          const key = `${domain}:${owner}/${repoPattern}`;
           if (!seen.has(key)) {
             seen.add(key);
-            repos.push({ owner, name: repoPattern });
+            if (isGitLab) {
+              repos.push({ domain, owner, name: repoPattern, projectPath: `${owner}/${repoPattern}` });
+            } else {
+              repos.push({ domain, owner, name: repoPattern });
+            }
           }
         }
       }
@@ -203,20 +242,27 @@ export class AttestationService {
   }
 
   async processRepo(repo: RepoToWatch, users: RegisteredUser[]): Promise<number> {
-    console.log(`[service] Processing ${repo.owner}/${repo.name}...`);
+    const repoId = repo.projectPath || `${repo.owner}/${repo.name}`;
+    const isGitLab = repo.domain.includes('gitlab') || (repo.domain !== 'github.com' && repo.domain !== 'bitbucket.org');
+    
+    console.log(`[service] Processing ${repo.domain}:${repoId}...`);
     
     try {
       // Get recent commits since last check
-      let commits;
+      let commits: CommitInfo[];
       try {
-        commits = await getRecentCommits(repo.owner, repo.name, this.lastCheckTime);
+        if (isGitLab && repo.projectPath) {
+          commits = await getGitLabCommits(repo.projectPath, this.lastCheckTime);
+        } else {
+          commits = await getGitHubCommits(repo.owner, repo.name, this.lastCheckTime);
+        }
       } catch (e: any) {
-        if (e.status === 404) {
-          console.log(`[service] Skipped ${repo.owner}/${repo.name}: not found or private`);
+        if (e.status === 404 || e.message?.includes('404')) {
+          console.log(`[service] Skipped ${repoId}: not found or private`);
           return 0;
         }
-        if (e.status === 403) {
-          console.log(`[service] Skipped ${repo.owner}/${repo.name}: access denied`);
+        if (e.status === 403 || e.message?.includes('403')) {
+          console.log(`[service] Skipped ${repoId}: access denied`);
           return 0;
         }
         throw e;
@@ -237,25 +283,33 @@ export class AttestationService {
       let attestedCount = 0;
 
       for (const commit of newCommits) {
-        // Match commit to registered user
-        const githubUsername = matchCommitToGitHubUser(commit);
+        // Match commit to registered user (platform-specific)
+        let matchedUsername: string | null;
+        if (isGitLab) {
+          matchedUsername = await matchCommitToGitLabUser(commit);
+        } else {
+          matchedUsername = matchCommitToGitHubUser(commit);
+        }
         
-        if (!githubUsername) {
-          console.log(`[service] Skipping commit ${commit.sha.slice(0, 8)} - no GitHub username`);
+        if (!matchedUsername) {
+          console.log(`[service] Skipping commit ${commit.sha.slice(0, 8)} - no username found`);
           continue;
         }
 
-        const user = users.find(u => u.githubUsername.toLowerCase() === githubUsername.toLowerCase());
+        // Find user matching domain and username
+        const user = users.find(u => 
+          u.domain === repo.domain && 
+          u.username.toLowerCase() === matchedUsername!.toLowerCase()
+        );
         
         if (!user) {
-          console.log(`[service] Skipping commit ${commit.sha.slice(0, 8)} by ${githubUsername} - not registered`);
+          console.log(`[service] Skipping commit ${commit.sha.slice(0, 8)} by ${matchedUsername} - not registered on ${repo.domain}`);
           continue;
         }
 
-        console.log(`[service] Attesting commit ${commit.sha.slice(0, 8)} by ${githubUsername}...`);
+        console.log(`[service] Attesting commit ${commit.sha.slice(0, 8)} by ${repo.domain}:${matchedUsername}...`);
 
         // Attest the commit via user's Kernel (permission-based)
-        // Always use GitHub username for consistency in leaderboards
         const result = await attestCommitWithKernel({
           user: {
             kernelAddress: user.kernelAddress,
@@ -265,7 +319,7 @@ export class AttestationService {
           commitHash: commit.sha,
           repoOwner: repo.owner,
           repoName: repo.name,
-          author: githubUsername, // Use GitHub username, not git author name
+          author: matchedUsername, // Use platform username for consistency
           message: commit.message
         });
 
@@ -283,7 +337,7 @@ export class AttestationService {
 
       return attestedCount;
     } catch (e) {
-      console.error(`[service] Error processing ${repo.owner}/${repo.name}:`, e);
+      console.error(`[service] Error processing ${repoId}:`, e);
       return 0;
     }
   }
