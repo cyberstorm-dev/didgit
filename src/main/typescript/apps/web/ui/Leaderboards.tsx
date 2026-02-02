@@ -34,42 +34,72 @@ function getEasGraphqlEndpoint(chainId: number): string {
 }
 
 const CONTRIBUTION_SCHEMA_UID = '0x7425c71616d2959f30296d8e013a8fd23320145b1dfda0718ab0a692087f8782';
+const IDENTITY_SCHEMA_UID = '0x6ba0509abc1a1ed41df2cce6cbc7350ea21922dae7fcbc408b54150a40be66af';
 
 async function fetchLeaderboards(chainId: number, _timeRange: TimeRange): Promise<Omit<LeaderboardData, 'loading' | 'error'>> {
   const endpoint = getEasGraphqlEndpoint(chainId);
   
-  // TODO: Add time filtering when timeRange !== 'all'
-  // For now, fetch all and filter client-side if needed
-  
-  const query = `
+  // Fetch contributions and identities to properly aggregate by user
+  const contributionQuery = `
     query GetContributions($schemaId: String!) {
       attestations(
         where: { schemaId: { equals: $schemaId }, revoked: { equals: false } }
       ) {
         id
         time
-        attester
+        recipient
         decodedDataJson
       }
     }
   `;
 
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query, variables: { schemaId: CONTRIBUTION_SCHEMA_UID } })
-  });
+  const identityQuery = `
+    query GetIdentities($schemaId: String!) {
+      attestations(
+        where: { schemaId: { equals: $schemaId }, revoked: { equals: false } }
+      ) {
+        recipient
+        decodedDataJson
+      }
+    }
+  `;
 
-  if (!response.ok) {
-    throw new Error(`EAS API error: ${response.status}`);
+  const [contribRes, identityRes] = await Promise.all([
+    fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: contributionQuery, variables: { schemaId: CONTRIBUTION_SCHEMA_UID } })
+    }),
+    fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: identityQuery, variables: { schemaId: IDENTITY_SCHEMA_UID } })
+    })
+  ]);
+
+  if (!contribRes.ok || !identityRes.ok) {
+    throw new Error(`EAS API error`);
   }
 
-  const data = await response.json();
-  const attestations = data?.data?.attestations ?? [];
+  const [contribData, identityData] = await Promise.all([contribRes.json(), identityRes.json()]);
+  const attestations = contribData?.data?.attestations ?? [];
+  const identities = identityData?.data?.attestations ?? [];
+
+  // Build address -> username mapping from identities
+  const addressToUsername = new Map<string, string>();
+  for (const id of identities) {
+    try {
+      const decoded = JSON.parse(id.decodedDataJson);
+      const username = decoded.find((d: any) => d.name === 'username')?.value?.value;
+      if (username && id.recipient) {
+        addressToUsername.set(id.recipient.toLowerCase(), username);
+      }
+    } catch {}
+  }
 
   // Count by repo
   const repoCounts = new Map<string, number>();
-  // Count by author (from decoded data)
+  // Count by recipient address (normalized to username)
   const accountCounts = new Map<string, number>();
 
   for (const att of attestations) {
@@ -82,11 +112,12 @@ async function fetchLeaderboards(chainId: number, _timeRange: TimeRange): Promis
         repoCounts.set(repo, (repoCounts.get(repo) || 0) + 1);
       }
 
-      const authorField = decoded.find((d: any) => d.name === 'author');
-      if (authorField?.value?.value) {
-        const author = authorField.value.value;
-        accountCounts.set(author, (accountCounts.get(author) || 0) + 1);
-      }
+      // Use recipient address to look up canonical username
+      const recipient = att.recipient?.toLowerCase();
+      const username = addressToUsername.get(recipient) || 
+        decoded.find((d: any) => d.name === 'author')?.value?.value ||
+        'unknown';
+      accountCounts.set(username, (accountCounts.get(username) || 0) + 1);
     } catch {}
   }
 

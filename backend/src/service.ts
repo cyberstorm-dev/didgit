@@ -255,6 +255,7 @@ export class AttestationService {
         console.log(`[service] Attesting commit ${commit.sha.slice(0, 8)} by ${githubUsername}...`);
 
         // Attest the commit via user's Kernel (permission-based)
+        // Always use GitHub username for consistency in leaderboards
         const result = await attestCommitWithKernel({
           user: {
             kernelAddress: user.kernelAddress,
@@ -264,7 +265,7 @@ export class AttestationService {
           commitHash: commit.sha,
           repoOwner: repo.owner,
           repoName: repo.name,
-          author: commit.author.name || commit.author.username || githubUsername,
+          author: githubUsername, // Use GitHub username, not git author name
           message: commit.message
         });
 
