@@ -7,6 +7,8 @@ const RESOLVER_ADDRESS = '0xf20e5d52acf8fc64f5b456580efa3d8e4dcf16c7' as Address
 const EAS_ADDRESS = '0x4200000000000000000000000000000000000021' as Address;
 const IDENTITY_SCHEMA_UID = '0x6ba0509abc1a1ed41df2cce6cbc7350ea21922dae7fcbc408b54150a40be66af' as Hex;
 const CONTRIBUTION_SCHEMA_UID = '0x7425c71616d2959f30296d8e013a8fd23320145b1dfda0718ab0a692087f8782' as Hex;
+const REPO_GLOBS_SCHEMA_UID = '0x79cb78c31678d34847273f605290b2ab56db29a057fdad8facdcc492b9cf2e74' as Hex;
+const EAS_GRAPHQL = 'https://base-sepolia.easscan.org/graphql';
 
 const resolverAbi = parseAbi([
   'function ownerOf(bytes32 identityHash) view returns (address)',
@@ -45,23 +47,102 @@ export class AttestationService {
   }
 
   async getRegisteredUsers(): Promise<RegisteredUser[]> {
-    // Query EAS for Identity attestations
-    // This is a simplified approach - in production, would use EAS GraphQL API
-    // For now, return hardcoded test data
+    console.log('[service] Fetching registered users from EAS...');
     
-    console.log('[service] Fetching registered users...');
-    
-    // TODO: Query EAS via GraphQL or events + repo registry
-    // For testing, return known user with repo globs
-    return [
-      {
-        githubUsername: 'cyberstorm-nisto',
-        walletAddress: '0x5B6441B4FF0AA470B1aEa11807F70FB98428BAEd' as Address,
-        kernelAddress: '0x2Ce0cE887De4D0043324C76472f386dC5d454e96' as Address,
-        identityAttestationUid: '0x90687e9e96de20f386d72c9d84b5c7a641a8476da58a77e610e2a1a1a5769cdf' as Hex,
-        repoGlobs: ['cyberstorm-dev/*', 'cyberstorm-nisto/*']
+    // Query identity attestations
+    const identityQuery = `
+      query {
+        attestations(where: { schemaId: { equals: "${IDENTITY_SCHEMA_UID}" }, revoked: { equals: false } }) {
+          id
+          recipient
+          decodedDataJson
+        }
       }
-    ];
+    `;
+    
+    // Query repo globs attestations
+    const repoGlobsQuery = `
+      query {
+        attestations(where: { schemaId: { equals: "${REPO_GLOBS_SCHEMA_UID}" }, revoked: { equals: false } }) {
+          id
+          recipient
+          refUID
+          decodedDataJson
+        }
+      }
+    `;
+
+    try {
+      const [identityRes, repoGlobsRes] = await Promise.all([
+        fetch(EAS_GRAPHQL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: identityQuery })
+        }),
+        fetch(EAS_GRAPHQL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: repoGlobsQuery })
+        })
+      ]);
+
+      const identityData = await identityRes.json();
+      const repoGlobsData = await repoGlobsRes.json();
+
+      const identities = identityData?.data?.attestations ?? [];
+      const repoGlobsAtts = repoGlobsData?.data?.attestations ?? [];
+
+      // Build map of identity UID -> repo globs
+      const globsByIdentity = new Map<string, string[]>();
+      for (const att of repoGlobsAtts) {
+        try {
+          const decoded = JSON.parse(att.decodedDataJson);
+          const globsField = decoded.find((d: any) => d.name === 'repoGlobs');
+          if (globsField?.value?.value && att.refUID) {
+            const globs = globsField.value.value.split(',').map((g: string) => g.trim());
+            globsByIdentity.set(att.refUID.toLowerCase(), globs);
+          }
+        } catch {}
+      }
+
+      // Build registered users
+      const users: RegisteredUser[] = [];
+      const seenUsernames = new Set<string>();
+
+      for (const att of identities) {
+        try {
+          const decoded = JSON.parse(att.decodedDataJson);
+          const usernameField = decoded.find((d: any) => d.name === 'username');
+          const username = usernameField?.value?.value;
+          
+          if (!username || seenUsernames.has(username.toLowerCase())) continue;
+          seenUsernames.add(username.toLowerCase());
+
+          const repoGlobs = globsByIdentity.get(att.id.toLowerCase()) || [];
+          
+          // Only include users with repo globs registered
+          if (repoGlobs.length === 0) {
+            console.log(`[service] Skipping ${username}: no repo globs registered`);
+            continue;
+          }
+
+          users.push({
+            githubUsername: username,
+            walletAddress: att.recipient as Address,
+            kernelAddress: '0x2Ce0cE887De4D0043324C76472f386dC5d454e96' as Address, // TODO: lookup from registry
+            identityAttestationUid: att.id as Hex,
+            repoGlobs
+          });
+
+          console.log(`[service] Found user: ${username} with globs: ${repoGlobs.join(', ')}`);
+        } catch {}
+      }
+
+      return users;
+    } catch (e) {
+      console.error('[service] Error fetching from EAS:', e);
+      return [];
+    }
   }
 
   async getReposToWatch(users: RegisteredUser[]): Promise<RepoToWatch[]> {
