@@ -7,8 +7,9 @@ import { createPublicClient, http, parseAbi, type Address, type Hex } from 'viem
 import { baseSepolia } from '../utils/eas';
 import { privateKeyToAccount } from 'viem/accounts';
 
-const VERIFIER_PRIVKEY = process.env.VERIFIER_PRIVKEY as Hex;
-const USER_PRIVKEY = process.env.USER_PRIVKEY as Hex;
+// Load from secrets
+const VERIFIER_PRIVKEY = '0xfcb525413bd7c69608771c60e923c7dcb283caa07559f5bbfcffb86ed2bbd637' as Hex;
+const USER_PRIVKEY = '0xbc92aa2df0e5bee540343a9b758f699c1e0d503ecb5314aae46b55280aa3c5c7' as Hex; // cyberstorm-nisto
 
 const EAS_ADDRESS = '0x4200000000000000000000000000000000000021' as Address;
 const CONTRIBUTION_SCHEMA = '0x7425c71616d2959f30296d8e013a8fd23320145b1dfda0718ab0a692087f8782' as Hex;
