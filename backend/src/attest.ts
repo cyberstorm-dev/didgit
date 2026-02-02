@@ -2,8 +2,6 @@ import { createPublicClient, http, type Address, type Hex, parseAbi, encodeFunct
 import { baseSepolia } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 
-const VERIFIER_PRIVKEY = process.env.VERIFIER_PRIVKEY as Hex;
-const BUNDLER_RPC = process.env.BUNDLER_RPC as string;
 const EAS_ADDRESS = '0x4200000000000000000000000000000000000021' as Address;
 const CONTRIBUTION_SCHEMA_UID = '0x7425c71616d2959f30296d8e013a8fd23320145b1dfda0718ab0a692087f8782' as Hex;
 
@@ -19,102 +17,101 @@ export interface AttestCommitRequest {
   repoName: string;
 }
 
-export async function attestCommit(req: AttestCommitRequest): Promise<{ success: boolean; attestationUid?: Hex; error?: string }> {
+export async function attestCommit(req: AttestCommitRequest): Promise<{ success: boolean; attestationUid?: Hex; txHash?: Hex; error?: string }> {
   try {
+    const VERIFIER_PRIVKEY = process.env.VERIFIER_PRIVKEY as Hex;
     if (!VERIFIER_PRIVKEY) throw new Error('VERIFIER_PRIVKEY not set');
-    if (!BUNDLER_RPC) throw new Error('BUNDLER_RPC not set');
 
     const verifierAccount = privateKeyToAccount(VERIFIER_PRIVKEY);
-    console.log('Verifier:', verifierAccount.address);
-
-    // Create the attestation data
-    const attestationData = {
-      schema: CONTRIBUTION_SCHEMA_UID,
-      data: {
-        recipient: req.userWalletAddress,
-        expirationTime: 0n,
-        revocable: true,
-        refUID: req.identityAttestationUid,
-        data: encodeContributionData({
-          commitHash: req.commitHash,
-          repoName: `${req.repoOwner}/${req.repoName}`,
-          timestamp: BigInt(Math.floor(Date.now() / 1000))
-        }),
-        value: 0n
-      }
-    };
-
-    // For now, we'll use the verifier's account to call EAS directly
-    // TODO: Create UserOp for user's Kernel wallet
-    // For MVP testing: verifier pays gas (not ideal, but functional)
-    
-    const { createKernelAccount, createKernelAccountClient } = await import('@zerodev/sdk');
-    const { signerToEcdsaValidator } = await import('@zerodev/ecdsa-validator');
-    const { getEntryPoint, KERNEL_V3_1 } = await import('@zerodev/sdk/constants');
+    console.log('[attest] Verifier:', verifierAccount.address);
+    console.log('[attest] User wallet:', req.userWalletAddress);
+    console.log('[attest] Commit:', req.commitHash.slice(0, 12));
 
     const publicClient = createPublicClient({
       chain: baseSepolia,
       transport: http(baseSepolia.rpcUrls.default.http[0])
     });
 
-    const entryPoint = getEntryPoint('0.7');
-    const kernelVersion = KERNEL_V3_1;
+    // Encode contribution data according to schema
+    // Git commit SHAs are 20 bytes (40 hex chars), need to pad to 32 bytes for bytes32
+    const commitHashPadded = ('0x' + req.commitHash + '0'.repeat(24)) as Hex; // Pad with 12 bytes of zeros
+    
+    const contributionData = encodeFunctionData({
+      abi: parseAbi(['function encode(bytes32 commitHash, string repoName, uint64 timestamp) returns (bytes)']),
+      functionName: 'encode',
+      args: [
+        commitHashPadded,
+        `${req.repoOwner}/${req.repoName}`,
+        BigInt(Math.floor(Date.now() / 1000))
+      ]
+    }).slice(10) as Hex; // Remove function selector
 
-    // Create verifier's own Kernel account (for testing)
-    const validator = await signerToEcdsaValidator(publicClient, {
-      signer: verifierAccount,
-      entryPoint,
-      kernelVersion
-    });
-
-    const kernelAccount = await createKernelAccount(publicClient, {
-      entryPoint,
-      kernelVersion,
-      plugins: {
-        sudo: validator
+    // Create attestation request
+    const attestationRequest = {
+      schema: CONTRIBUTION_SCHEMA_UID,
+      data: {
+        recipient: req.userWalletAddress,
+        expirationTime: 0n,
+        revocable: true,
+        refUID: req.identityAttestationUid,
+        data: contributionData,
+        value: 0n
       }
+    };
+
+    console.log('[attest] Attestation request:', {
+      schema: attestationRequest.schema,
+      recipient: attestationRequest.data.recipient,
+      refUID: attestationRequest.data.refUID
     });
 
-    const kernelClient = await createKernelAccountClient({
-      account: kernelAccount,
-      client: publicClient,
-      bundlerTransport: http(BUNDLER_RPC)
+    // MVP: Verifier calls EAS directly (verifier pays gas)
+    // TODO: Create UserOp for user's wallet once AllowlistValidator is deployed
+    const { createWalletClient } = await import('viem');
+    const { http: httpTransport } = await import('viem');
+
+    const walletClient = createWalletClient({
+      account: verifierAccount,
+      chain: baseSepolia,
+      transport: httpTransport(baseSepolia.rpcUrls.default.http[0])
     });
 
-    console.log('Kernel account:', await kernelAccount.getAddress());
-
-    // Call EAS.attest via UserOp
-    const callData = encodeFunctionData({
+    // Call EAS.attest
+    const txHash = await walletClient.writeContract({
+      address: EAS_ADDRESS,
       abi: easAbi,
       functionName: 'attest',
-      args: [attestationData]
+      args: [attestationRequest]
     });
 
-    const userOpHash = await kernelClient.sendUserOperation({
-      calls: [{
-        to: EAS_ADDRESS,
-        data: callData,
-        value: 0n
-      }]
-    });
+    console.log('[attest] TX hash:', txHash);
 
-    console.log('UserOp hash:', userOpHash);
+    // Wait for receipt
+    const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
 
-    const receipt = await kernelClient.waitForUserOperationReceipt({
-      hash: userOpHash
-    });
+    console.log('[attest] Receipt:', receipt.status);
 
-    console.log('Receipt:', receipt);
+    // Parse logs to get attestation UID
+    const attestedLog = receipt.logs.find(log => 
+      log.address.toLowerCase() === EAS_ADDRESS.toLowerCase() &&
+      log.topics[0] === '0x8bf46bf4cfd674fa735a3d63ec1c9ad4153f033c290341f3a588b75685141b35' // Attested event
+    );
 
-    // TODO: Parse logs to get attestation UID
-    const attestationUid = '0x...' as Hex; // Placeholder
+    const attestationUid = attestedLog?.topics[3] as Hex | undefined;
+
+    if (!attestationUid) {
+      throw new Error('Failed to parse attestation UID from logs');
+    }
+
+    console.log('[attest] Attestation UID:', attestationUid);
 
     return {
       success: true,
-      attestationUid
+      attestationUid,
+      txHash
     };
   } catch (e) {
-    console.error('Attestation error:', e);
+    console.error('[attest] Error:', e);
     return {
       success: false,
       error: (e as Error).message ?? 'Unknown error'
