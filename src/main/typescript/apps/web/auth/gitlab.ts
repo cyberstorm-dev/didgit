@@ -112,8 +112,20 @@ const UserResp = z.object({
 
 export type GitLabUser = z.infer<typeof UserResp>;
 
-export async function fetchGitLabUser(token: GitLabToken): Promise<GitLabUser> {
-  const resp = await fetch('https://gitlab.com/api/v4/user', {
+const DEFAULT_GITLAB_HOST = 'gitlab.com';
+
+/**
+ * Build the API base URL for a GitLab instance
+ * @param customHost - Custom GitLab host (e.g., "gitlab.example.com"), defaults to gitlab.com
+ */
+function getApiBase(customHost?: string): string {
+  const host = customHost || DEFAULT_GITLAB_HOST;
+  return `https://${host}/api/v4`;
+}
+
+export async function fetchGitLabUser(token: GitLabToken, customHost?: string): Promise<GitLabUser> {
+  const apiBase = getApiBase(customHost);
+  const resp = await fetch(`${apiBase}/user`, {
     headers: {
       Authorization: `Bearer ${token.access_token}`,
       Accept: 'application/json',
@@ -137,9 +149,11 @@ export interface SnippetParams {
 
 export async function createPublicSnippet(
   token: GitLabToken,
-  params: SnippetParams
+  params: SnippetParams,
+  customHost?: string
 ): Promise<{ web_url: string; id: number }> {
-  const resp = await fetch('https://gitlab.com/api/v4/snippets', {
+  const apiBase = getApiBase(customHost);
+  const resp = await fetch(`${apiBase}/snippets`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token.access_token}`,

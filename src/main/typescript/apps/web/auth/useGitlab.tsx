@@ -1,11 +1,14 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { createCodeChallenge, exchangeCodeForToken, fetchGitLabUser, glConfig, GitLabToken, GitLabUser } from './gitlab';
 
+const DEFAULT_GITLAB_HOST = 'gitlab.com';
+
 type State = {
   token: GitLabToken | null;
   user: GitLabUser | null;
   connecting: boolean;
-  connect: () => Promise<void>;
+  customHost: string | null;
+  connect: (customHost?: string) => Promise<void>;
   disconnect: () => void;
 };
 
@@ -16,6 +19,7 @@ export const GitlabAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [token, setToken] = useState<GitLabToken | null>(null);
   const [glUser, setGlUser] = useState<GitLabUser | null>(null);
   const [connecting, setConnecting] = useState(false);
+  const [customHost, setCustomHost] = useState<string | null>(null);
 
   // Handle OAuth callback
   useEffect(() => {
@@ -31,12 +35,15 @@ export const GitlabAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       const state = data.state as string | undefined;
       const stored = sessionStorage.getItem('gl_oauth_state');
       const codeVerifier = sessionStorage.getItem('gl_pkce_verifier');
+      const storedHost = sessionStorage.getItem('gl_custom_host');
 
       if (!code || !state || !stored || state !== stored || !codeVerifier || !cfg.clientId) return;
 
       (async () => {
         try {
           setConnecting(true);
+          const hostForApi = storedHost || undefined;
+          setCustomHost(storedHost);
           const tok = await exchangeCodeForToken({
             clientId: cfg.clientId,
             code,
@@ -44,11 +51,12 @@ export const GitlabAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             codeVerifier,
           });
           setToken(tok);
-          const u = await fetchGitLabUser(tok);
+          const u = await fetchGitLabUser(tok, hostForApi);
           setGlUser(u);
         } finally {
           sessionStorage.removeItem('gl_oauth_state');
           sessionStorage.removeItem('gl_pkce_verifier');
+          sessionStorage.removeItem('gl_custom_host');
           setConnecting(false);
         }
       })();
@@ -61,6 +69,7 @@ export const GitlabAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const state = url.searchParams.get('state');
     const stored = sessionStorage.getItem('gl_oauth_state');
     const codeVerifier = sessionStorage.getItem('gl_pkce_verifier');
+    const storedHost = sessionStorage.getItem('gl_custom_host');
     const inPopup = !!window.opener;
 
     if (inPopup && code && state) {
@@ -77,6 +86,8 @@ export const GitlabAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       (async () => {
         try {
           setConnecting(true);
+          const hostForApi = storedHost || undefined;
+          setCustomHost(storedHost);
           const tok = await exchangeCodeForToken({
             clientId: cfg.clientId,
             code,
@@ -84,7 +95,7 @@ export const GitlabAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             codeVerifier,
           });
           setToken(tok);
-          const u = await fetchGitLabUser(tok);
+          const u = await fetchGitLabUser(tok, hostForApi);
           setGlUser(u);
         } catch {
           // ignore
@@ -95,6 +106,7 @@ export const GitlabAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           window.history.replaceState({}, '', url.pathname + url.search + url.hash);
           sessionStorage.removeItem('gl_oauth_state');
           sessionStorage.removeItem('gl_pkce_verifier');
+          sessionStorage.removeItem('gl_custom_host');
           setConnecting(false);
         }
       })();
@@ -103,7 +115,7 @@ export const GitlabAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return () => window.removeEventListener('message', onMessage);
   }, [cfg.clientId, cfg.redirectUri]);
 
-  const connect = useCallback(async () => {
+  const connect = useCallback(async (hostOverride?: string) => {
     if (!cfg.clientId) throw new Error('VITE_GITLAB_CLIENT_ID is not set');
 
     const state = Math.random().toString(36).slice(2);
@@ -113,6 +125,14 @@ export const GitlabAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     sessionStorage.setItem('gl_oauth_state', state);
     sessionStorage.setItem('gl_pkce_verifier', verifier);
+    
+    // Store custom host for use after OAuth callback
+    const host = hostOverride || DEFAULT_GITLAB_HOST;
+    if (hostOverride) {
+      sessionStorage.setItem('gl_custom_host', hostOverride);
+    } else {
+      sessionStorage.removeItem('gl_custom_host');
+    }
 
     const redirectUri = cfg.redirectUri ?? `${window.location.origin}`;
     const params = new URLSearchParams({
@@ -125,21 +145,22 @@ export const GitlabAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       code_challenge_method: 'S256',
     });
 
-    const url = `https://gitlab.com/oauth/authorize?${params.toString()}`;
+    const oauthUrl = `https://${host}/oauth/authorize?${params.toString()}`;
     const w = 500, h = 650;
     const left = window.screenX + (window.outerWidth - w) / 2;
     const top = window.screenY + (window.outerHeight - h) / 2.5;
-    window.open(url, 'gitlab_oauth', `width=${w},height=${h},left=${left},top=${top}`);
+    window.open(oauthUrl, 'gitlab_oauth', `width=${w},height=${h},left=${left},top=${top}`);
   }, [cfg.clientId, cfg.redirectUri]);
 
   const disconnect = useCallback(() => {
     setGlUser(null);
     setToken(null);
+    setCustomHost(null);
   }, []);
 
   const value = useMemo<State>(
-    () => ({ token, user: glUser, connecting, connect, disconnect }),
-    [token, glUser, connecting, connect, disconnect]
+    () => ({ token, user: glUser, connecting, customHost, connect, disconnect }),
+    [token, glUser, connecting, customHost, connect, disconnect]
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

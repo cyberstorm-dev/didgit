@@ -4,7 +4,16 @@
  */
 
 const GITLAB_TOKEN = process.env.GITLAB_TOKEN;
-const GITLAB_API_BASE = 'https://gitlab.com/api/v4';
+const DEFAULT_GITLAB_HOST = 'gitlab.com';
+
+/**
+ * Build the API base URL for a GitLab instance
+ * @param customHost - Custom GitLab host (e.g., "gitlab.example.com"), defaults to gitlab.com
+ */
+function getApiBase(customHost?: string): string {
+  const host = customHost || DEFAULT_GITLAB_HOST;
+  return `https://${host}/api/v4`;
+}
 
 export interface CommitInfo {
   sha: string;
@@ -47,7 +56,7 @@ interface GitLabProject {
   };
 }
 
-async function gitlabFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+async function gitlabFetch<T>(endpoint: string, options: RequestInit = {}, customHost?: string): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string> || {}),
@@ -57,7 +66,8 @@ async function gitlabFetch<T>(endpoint: string, options: RequestInit = {}): Prom
     headers['PRIVATE-TOKEN'] = GITLAB_TOKEN;
   }
 
-  const response = await fetch(`${GITLAB_API_BASE}${endpoint}`, {
+  const apiBase = getApiBase(customHost);
+  const response = await fetch(`${apiBase}${endpoint}`, {
     ...options,
     headers,
   });
@@ -73,10 +83,12 @@ async function gitlabFetch<T>(endpoint: string, options: RequestInit = {}): Prom
  * Get recent commits from a GitLab project
  * @param projectPath - Full project path (e.g., "owner/repo" or "group/subgroup/repo")
  * @param since - Optional date to filter commits from
+ * @param customHost - Optional custom GitLab host (e.g., "gitlab.example.com")
  */
 export async function getRecentCommits(
   projectPath: string,
-  since?: Date
+  since?: Date,
+  customHost?: string
 ): Promise<CommitInfo[]> {
   const encodedPath = encodeURIComponent(projectPath);
   const params = new URLSearchParams({ per_page: '100' });
@@ -86,7 +98,9 @@ export async function getRecentCommits(
   }
 
   const commits = await gitlabFetch<GitLabCommit[]>(
-    `/projects/${encodedPath}/repository/commits?${params.toString()}`
+    `/projects/${encodedPath}/repository/commits?${params.toString()}`,
+    {},
+    customHost
   );
 
   // Parse project path to get owner/name
@@ -113,15 +127,21 @@ export async function getRecentCommits(
 
 /**
  * Get a specific commit from a GitLab project
+ * @param projectPath - Full project path (e.g., "owner/repo")
+ * @param sha - Commit SHA
+ * @param customHost - Optional custom GitLab host (e.g., "gitlab.example.com")
  */
 export async function getCommit(
   projectPath: string,
-  sha: string
+  sha: string,
+  customHost?: string
 ): Promise<CommitInfo | null> {
   try {
     const encodedPath = encodeURIComponent(projectPath);
     const commit = await gitlabFetch<GitLabCommit>(
-      `/projects/${encodedPath}/repository/commits/${sha}`
+      `/projects/${encodedPath}/repository/commits/${sha}`,
+      {},
+      customHost
     );
 
     const pathParts = projectPath.split('/');
@@ -166,8 +186,10 @@ export async function matchCommitToGitLabUser(commit: CommitInfo): Promise<strin
 
 /**
  * List projects for a GitLab user
+ * @param username - GitLab username
+ * @param customHost - Optional custom GitLab host (e.g., "gitlab.example.com")
  */
-export async function listUserProjects(username: string): Promise<{ owner: string; name: string; projectPath: string }[]> {
+export async function listUserProjects(username: string, customHost?: string): Promise<{ owner: string; name: string; projectPath: string }[]> {
   try {
     const projects: { owner: string; name: string; projectPath: string }[] = [];
     let page = 1;
@@ -180,7 +202,9 @@ export async function listUserProjects(username: string): Promise<{ owner: strin
       });
 
       const data = await gitlabFetch<GitLabProject[]>(
-        `/users/${encodeURIComponent(username)}/projects?${params.toString()}`
+        `/users/${encodeURIComponent(username)}/projects?${params.toString()}`,
+        {},
+        customHost
       );
 
       if (data.length === 0) break;
@@ -207,8 +231,10 @@ export async function listUserProjects(username: string): Promise<{ owner: strin
 
 /**
  * List projects in a GitLab group
+ * @param groupPath - GitLab group path
+ * @param customHost - Optional custom GitLab host (e.g., "gitlab.example.com")
  */
-export async function listGroupProjects(groupPath: string): Promise<{ owner: string; name: string; projectPath: string }[]> {
+export async function listGroupProjects(groupPath: string, customHost?: string): Promise<{ owner: string; name: string; projectPath: string }[]> {
   try {
     const projects: { owner: string; name: string; projectPath: string }[] = [];
     let page = 1;
@@ -223,7 +249,9 @@ export async function listGroupProjects(groupPath: string): Promise<{ owner: str
       });
 
       const data = await gitlabFetch<GitLabProject[]>(
-        `/groups/${encodedPath}/projects?${params.toString()}`
+        `/groups/${encodedPath}/projects?${params.toString()}`,
+        {},
+        customHost
       );
 
       if (data.length === 0) break;
@@ -250,14 +278,20 @@ export async function listGroupProjects(groupPath: string): Promise<{ owner: str
 
 /**
  * Verify a snippet exists and is owned by the expected user
+ * @param snippetId - GitLab snippet ID
+ * @param expectedUsername - Expected owner username
+ * @param customHost - Optional custom GitLab host (e.g., "gitlab.example.com")
  */
 export async function verifySnippetOwnership(
   snippetId: string,
-  expectedUsername: string
+  expectedUsername: string,
+  customHost?: string
 ): Promise<boolean> {
   try {
     const snippet = await gitlabFetch<{ author: { username: string } }>(
-      `/snippets/${snippetId}`
+      `/snippets/${snippetId}`,
+      {},
+      customHost
     );
     return snippet.author.username.toLowerCase() === expectedUsername.toLowerCase();
   } catch {
@@ -267,10 +301,13 @@ export async function verifySnippetOwnership(
 
 /**
  * Fetch public snippet content
+ * @param snippetId - GitLab snippet ID
+ * @param customHost - Optional custom GitLab host (e.g., "gitlab.example.com")
  */
-export async function fetchSnippetContent(snippetId: string): Promise<string | null> {
+export async function fetchSnippetContent(snippetId: string, customHost?: string): Promise<string | null> {
   try {
-    const response = await fetch(`${GITLAB_API_BASE}/snippets/${snippetId}/raw`, {
+    const apiBase = getApiBase(customHost);
+    const response = await fetch(`${apiBase}/snippets/${snippetId}/raw`, {
       headers: GITLAB_TOKEN ? { 'PRIVATE-TOKEN': GITLAB_TOKEN } : {},
     });
     if (!response.ok) return null;

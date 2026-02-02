@@ -2,20 +2,30 @@ import React, { useState } from 'react';
 import { useGithubAuth } from '../auth/useGithub';
 import { useGitlabAuth } from '../auth/useGitlab';
 import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
 
 export type Platform = 'github' | 'gitlab';
 
 export interface PlatformSectionProps {
   selectedPlatform?: Platform;
   onPlatformChange?: (platform: Platform) => void;
+  /** Custom GitLab host for self-hosted instances (e.g., "gitlab.example.com") */
+  customGitlabHost?: string;
+  onCustomGitlabHostChange?: (host: string) => void;
 }
 
 export const PlatformSection: React.FC<PlatformSectionProps> = ({
   selectedPlatform: controlledPlatform,
   onPlatformChange,
+  customGitlabHost: controlledCustomHost,
+  onCustomGitlabHostChange,
 }) => {
   const [internalPlatform, setInternalPlatform] = useState<Platform>('github');
+  const [internalCustomHost, setInternalCustomHost] = useState<string>('');
+  const [useCustomHost, setUseCustomHost] = useState(false);
+  
   const platform = controlledPlatform ?? internalPlatform;
+  const customGitlabHost = controlledCustomHost ?? internalCustomHost;
 
   const github = useGithubAuth();
   const gitlab = useGitlabAuth();
@@ -26,6 +36,19 @@ export const PlatformSection: React.FC<PlatformSectionProps> = ({
     } else {
       setInternalPlatform(p);
     }
+  };
+
+  const handleCustomHostChange = (host: string) => {
+    if (onCustomGitlabHostChange) {
+      onCustomGitlabHostChange(host);
+    } else {
+      setInternalCustomHost(host);
+    }
+  };
+
+  const handleGitLabConnect = () => {
+    const host = useCustomHost && customGitlabHost.trim() ? customGitlabHost.trim() : undefined;
+    gitlab.connect(host);
   };
 
   const ghClientId = (import.meta as any).env.VITE_GITHUB_CLIENT_ID as string | undefined;
@@ -98,11 +121,38 @@ export const PlatformSection: React.FC<PlatformSectionProps> = ({
       {platform === 'gitlab' && (
         <div>
           {!gitlab.user ? (
-            <div className="flex items-center gap-3">
-              <Button onClick={gitlab.connect} disabled={gitlab.connecting || !glClientId}>
-                {gitlab.connecting ? 'Connecting...' : 'Connect GitLab'}
-              </Button>
-              <span className="text-sm text-gray-500">Scopes: read_user, api</span>
+            <div className="space-y-3">
+              {/* Self-hosted GitLab option */}
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={useCustomHost}
+                    onChange={(e) => setUseCustomHost(e.target.checked)}
+                    className="rounded border-gray-300"
+                  />
+                  Self-hosted GitLab instance
+                </label>
+                {useCustomHost && (
+                  <Input
+                    value={customGitlabHost}
+                    onChange={(e) => handleCustomHostChange(e.target.value)}
+                    placeholder="gitlab.example.com"
+                    className="max-w-xs"
+                  />
+                )}
+                {useCustomHost && (
+                  <p className="text-xs text-gray-500">
+                    Host: <code className="bg-gray-100 px-1 rounded">{customGitlabHost.trim() || 'gitlab.com'}</code>
+                  </p>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                <Button onClick={handleGitLabConnect} disabled={gitlab.connecting || !glClientId}>
+                  {gitlab.connecting ? 'Connecting...' : 'Connect GitLab'}
+                </Button>
+                <span className="text-sm text-gray-500">Scopes: read_user, api</span>
+              </div>
             </div>
           ) : (
             <div className="flex items-center gap-3">
@@ -115,6 +165,11 @@ export const PlatformSection: React.FC<PlatformSectionProps> = ({
               )}
               <span>
                 Logged in as <strong>{gitlab.user.username}</strong>
+                {gitlab.customHost && (
+                  <span className="text-xs text-gray-500 ml-1">
+                    ({gitlab.customHost})
+                  </span>
+                )}
               </span>
               <Button variant="ghost" onClick={gitlab.disconnect}>
                 Disconnect
@@ -136,7 +191,11 @@ export const PlatformSection: React.FC<PlatformSectionProps> = ({
         Connected:{' '}
         {github.user && <span className="text-green-600">GitHub ({github.user.login})</span>}
         {github.user && gitlab.user && ' | '}
-        {gitlab.user && <span className="text-orange-600">GitLab ({gitlab.user.username})</span>}
+        {gitlab.user && (
+          <span className="text-orange-600">
+            GitLab ({gitlab.user.username}{gitlab.customHost ? ` @ ${gitlab.customHost}` : ''})
+          </span>
+        )}
         {!github.user && !gitlab.user && <span>None</span>}
       </div>
     </section>

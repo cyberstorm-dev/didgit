@@ -33,9 +33,11 @@ export const AttestForm: React.FC = () => {
   const [useCustomDomain, setUseCustomDomain] = useState(false);
   
   // Determine domain based on platform and custom domain setting
+  // Prefer the host from the auth context (where user actually authenticated)
+  const effectiveGitlabHost = gitlab.customHost || (useCustomDomain && customDomain.trim() ? customDomain.trim() : null);
   const domain = platform === 'github' 
     ? 'github.com' 
-    : (useCustomDomain && customDomain.trim() ? customDomain.trim() : 'gitlab.com');
+    : (effectiveGitlabHost || 'gitlab.com');
   
   // Get current auth state based on platform
   const currentAuth = platform === 'github' ? github : gitlab;
@@ -256,12 +258,13 @@ export const AttestForm: React.FC = () => {
         if (json.html_url) setProofUrl(json.html_url as string);
       } else if (platform === 'gitlab' && gitlab.token) {
         // Create GitLab Snippet
+        // Use the host from auth context (where user authenticated) or fallback to manual entry
         const result = await createPublicSnippet(gitlab.token, {
           title: 'didgit.dev identity proof',
           description: 'GitLab identity attestation proof for didgit.dev',
           filename: 'didgit.dev-proof.json',
           content,
-        });
+        }, effectiveGitlabHost || undefined);
         setProofUrl(result.web_url);
       }
     } catch (e) {
@@ -305,25 +308,33 @@ export const AttestForm: React.FC = () => {
         </div>
       </div>
 
-      {/* Self-hosted GitLab option */}
+      {/* Self-hosted GitLab info */}
       {platform === 'gitlab' && (
         <div className="mb-4 space-y-2">
-          <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={useCustomDomain}
-              onChange={(e) => setUseCustomDomain(e.target.checked)}
-              className="rounded border-gray-300"
-            />
-            Self-hosted GitLab instance
-          </label>
-          {useCustomDomain && (
-            <Input
-              value={customDomain}
-              onChange={(e) => setCustomDomain(e.target.value)}
-              placeholder="gitlab.example.com"
-              className="max-w-xs"
-            />
+          {gitlab.customHost ? (
+            <p className="text-sm text-gray-600">
+              Connected to self-hosted instance: <code className="bg-gray-100 px-1 rounded">{gitlab.customHost}</code>
+            </p>
+          ) : (
+            <>
+              <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={useCustomDomain}
+                  onChange={(e) => setUseCustomDomain(e.target.checked)}
+                  className="rounded border-gray-300"
+                />
+                Self-hosted GitLab instance (override)
+              </label>
+              {useCustomDomain && (
+                <Input
+                  value={customDomain}
+                  onChange={(e) => setCustomDomain(e.target.value)}
+                  placeholder="gitlab.example.com"
+                  className="max-w-xs"
+                />
+              )}
+            </>
           )}
           <p className="text-xs text-gray-500">
             Domain: <code className="bg-gray-100 px-1 rounded">{domain}</code>
