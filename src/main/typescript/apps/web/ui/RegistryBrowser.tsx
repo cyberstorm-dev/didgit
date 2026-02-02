@@ -136,7 +136,7 @@ async function fetchIdentities(
   }
   const identities = Array.from(seenUsernames.values());
 
-  // Note: total count may be higher than deduped count
+  // Return both raw total (for reference) and deduped identities
   return { identities, total };
 }
 
@@ -206,7 +206,7 @@ export const RegistryBrowser: React.FC = () => {
           📋 Identity Registry
         </Typography>
         <Chip
-          label={`${state.total} verified`}
+          label={`${state.identities.length} verified`}
           size="small"
           color="success"
           variant="outlined"
