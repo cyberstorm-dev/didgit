@@ -1,17 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
-import {IKernelValidator} from "@zerodev/kernel/interfaces/IKernelValidator.sol";
-import {ValidationData} from "@zerodev/kernel/types/Types.sol";
-import {SIG_VALIDATION_FAILED, SIG_VALIDATION_SUCCESS} from "@zerodev/kernel/types/Constants.sol";
-import {UserOperation} from "@zerodev/kernel/interfaces/UserOperation.sol";
-
 /**
  * @title AllowlistValidator
  * @notice Validator that allows pre-approved addresses to execute specific calls
  * @dev Used for delegated attestations - verifier address is pre-approved
+ * 
+ * This is a Kernel v3 validator that validates UserOps signed by the verifier.
+ * Users install this validator on their Kernel account to allow automated attestations.
  */
-contract AllowlistValidator is IKernelValidator {
+contract AllowlistValidator {
     // Hardcoded verifier address (set at deployment)
     address public immutable verifier;
     
