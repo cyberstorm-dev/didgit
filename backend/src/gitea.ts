@@ -11,6 +11,7 @@ export { CommitInfo };
 
 const GITEA_TOKEN = process.env.GITEA_TOKEN;
 const DEFAULT_HOST = 'codeberg.org';
+const MAX_PAGES = 100;
 
 /**
  * Gitea API commit response
@@ -28,6 +29,22 @@ interface GiteaCommit {
   author?: {
     login?: string;
   };
+  created?: string;
+}
+
+/**
+ * Gitea API single commit response (from /git/commits/:sha endpoint)
+ * Different structure than list endpoint
+ */
+interface GiteaSingleCommit {
+  sha: string;
+  author?: {
+    email?: string;
+    name?: string;
+    date?: string;
+    login?: string;
+  };
+  message?: string;
   created?: string;
 }
 
@@ -111,6 +128,11 @@ export async function getRecentCommits(
   try {
     const resp = await fetch(url.toString(), { headers: getHeaders() });
     if (!resp.ok) {
+      if (resp.status === 404 || resp.status === 403) {
+        const error = new Error(`Failed to fetch commits: ${resp.status}`) as Error & { status: number };
+        error.status = resp.status;
+        throw error;
+      }
       console.error(`[gitea] Failed to fetch commits: ${resp.status}`);
       return [];
     }
@@ -165,7 +187,7 @@ export async function getCommit(
       return null;
     }
     
-    const commit = await resp.json() as any;
+    const commit = await resp.json() as GiteaSingleCommit;
     
     return {
       sha: commit.sha,
@@ -200,7 +222,7 @@ export async function listUserRepos(
     const repos: { owner: string; name: string }[] = [];
     let page = 1;
     
-    while (true) {
+    while (page <= MAX_PAGES) {
       const resp = await fetch(
         `${baseUrl}/users/${username}/repos?page=${page}&limit=50`,
         { headers: getHeaders() }
@@ -247,7 +269,7 @@ export async function listOrgRepos(
     const repos: { owner: string; name: string }[] = [];
     let page = 1;
     
-    while (true) {
+    while (page <= MAX_PAGES) {
       const resp = await fetch(
         `${baseUrl}/orgs/${org}/repos?page=${page}&limit=50`,
         { headers: getHeaders() }
