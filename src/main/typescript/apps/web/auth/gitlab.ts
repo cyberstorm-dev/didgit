@@ -61,8 +61,8 @@ export async function exchangeCodeForToken(params: {
   redirectUri: string;
   codeVerifier: string;
 }): Promise<GitLabToken> {
-  const { tokenProxy } = glConfig() as any;
-  const url = tokenProxy ?? `${window.location.origin}/api/gitlab/token`;
+  const config = glConfig();
+  const url = config.tokenProxy ?? `${window.location.origin}/api/gitlab/token`;
   
   const resp = await fetch(url, {
     method: 'POST',
@@ -84,7 +84,9 @@ export async function exchangeCodeForToken(params: {
         const msg = `${err.data.error}${err.data.error_description ? `: ${err.data.error_description}` : ''}`;
         throw new Error(`GitLab token exchange failed: ${resp.status} ${msg}`);
       }
-    } catch {}
+    } catch (parseErr) {
+      console.debug('[gitlab] Failed to parse error response:', parseErr);
+    }
     throw new Error(`GitLab token exchange failed: ${resp.status}`);
   }
 
@@ -179,5 +181,11 @@ export async function createPublicSnippet(
   }
 
   const json = await resp.json();
-  return { web_url: json.web_url as string, id: json.id as number };
+  
+  // Validate response shape
+  if (typeof json.web_url !== 'string' || typeof json.id !== 'number') {
+    throw new Error('Unexpected snippet response format');
+  }
+  
+  return { web_url: json.web_url, id: json.id };
 }

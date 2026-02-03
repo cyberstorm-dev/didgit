@@ -28,11 +28,13 @@ export const GitlabAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     // Listen for popup messages carrying code/state
     const onMessage = (ev: MessageEvent) => {
       if (ev.origin !== origin) return;
-      const data = ev.data as any;
-      if (!data || data.type !== 'GL_OAUTH') return;
-
-      const code = data.code as string | undefined;
-      const state = data.state as string | undefined;
+      
+      // Validate message shape before trusting it
+      const data = ev.data;
+      if (!data || typeof data !== 'object' || data.type !== 'GL_OAUTH') return;
+      
+      const code = typeof data.code === 'string' ? data.code : undefined;
+      const state = typeof data.state === 'string' ? data.state : undefined;
       const stored = sessionStorage.getItem('gl_oauth_state');
       const codeVerifier = sessionStorage.getItem('gl_pkce_verifier');
       const storedHost = sessionStorage.getItem('gl_custom_host');
@@ -97,8 +99,8 @@ export const GitlabAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           setToken(tok);
           const u = await fetchGitLabUser(tok, hostForApi);
           setGlUser(u);
-        } catch {
-          // ignore
+        } catch (err) {
+          console.error('[gitlab] OAuth token exchange failed:', err);
         } finally {
           // Cleanup URL
           url.searchParams.delete('code');
@@ -118,7 +120,9 @@ export const GitlabAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const connect = useCallback(async (hostOverride?: string) => {
     if (!cfg.clientId) throw new Error('VITE_GITLAB_CLIENT_ID is not set');
 
-    const state = Math.random().toString(36).slice(2);
+    // Use cryptographically secure random values for OAuth state (CSRF protection)
+    const state = crypto.getRandomValues(new Uint8Array(16))
+      .reduce((acc, x) => acc + ('0' + (x & 0xff).toString(16)).slice(-2), '');
     const verifier = crypto.getRandomValues(new Uint8Array(32))
       .reduce((acc, x) => acc + ('0' + (x & 0xff).toString(16)).slice(-2), '');
     const challenge = await createCodeChallenge(verifier);

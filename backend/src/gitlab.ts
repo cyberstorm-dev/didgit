@@ -5,6 +5,10 @@
 
 const GITLAB_TOKEN = process.env.GITLAB_TOKEN;
 const DEFAULT_GITLAB_HOST = 'gitlab.com';
+const MAX_PAGES = 100; // Prevent infinite pagination loops
+
+// Hostname validation regex
+const HOSTNAME_REGEX = /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
 
 /**
  * Build the API base URL for a GitLab instance
@@ -12,6 +16,12 @@ const DEFAULT_GITLAB_HOST = 'gitlab.com';
  */
 function getApiBase(customHost?: string): string {
   const host = customHost || DEFAULT_GITLAB_HOST;
+  
+  // Validate hostname to prevent URL manipulation attacks
+  if (!HOSTNAME_REGEX.test(host)) {
+    throw new Error(`Invalid GitLab host: ${host}`);
+  }
+  
   return `https://${host}/api/v4`;
 }
 
@@ -194,7 +204,7 @@ export async function listUserProjects(username: string, customHost?: string): P
     const projects: { owner: string; name: string; projectPath: string }[] = [];
     let page = 1;
 
-    while (true) {
+    while (page <= MAX_PAGES) {
       const params = new URLSearchParams({
         per_page: '100',
         page: String(page),
@@ -240,7 +250,7 @@ export async function listGroupProjects(groupPath: string, customHost?: string):
     let page = 1;
     const encodedPath = encodeURIComponent(groupPath);
 
-    while (true) {
+    while (page <= MAX_PAGES) {
       const params = new URLSearchParams({
         per_page: '100',
         page: String(page),
@@ -287,6 +297,12 @@ export async function verifySnippetOwnership(
   expectedUsername: string,
   customHost?: string
 ): Promise<boolean> {
+  // Validate snippetId is numeric to prevent path traversal
+  if (!/^\d+$/.test(snippetId)) {
+    console.warn(`[gitlab] Invalid snippet ID format: ${snippetId}`);
+    return false;
+  }
+  
   try {
     const snippet = await gitlabFetch<{ author: { username: string } }>(
       `/snippets/${snippetId}`,
@@ -294,7 +310,8 @@ export async function verifySnippetOwnership(
       customHost
     );
     return snippet.author.username.toLowerCase() === expectedUsername.toLowerCase();
-  } catch {
+  } catch (err) {
+    console.debug(`[gitlab] Failed to verify snippet ${snippetId} ownership:`, err);
     return false;
   }
 }
@@ -305,6 +322,12 @@ export async function verifySnippetOwnership(
  * @param customHost - Optional custom GitLab host (e.g., "gitlab.example.com")
  */
 export async function fetchSnippetContent(snippetId: string, customHost?: string): Promise<string | null> {
+  // Validate snippetId is numeric to prevent path traversal
+  if (!/^\d+$/.test(snippetId)) {
+    console.warn(`[gitlab] Invalid snippet ID format: ${snippetId}`);
+    return null;
+  }
+  
   try {
     const apiBase = getApiBase(customHost);
     const response = await fetch(`${apiBase}/snippets/${snippetId}/raw`, {
@@ -312,7 +335,8 @@ export async function fetchSnippetContent(snippetId: string, customHost?: string
     });
     if (!response.ok) return null;
     return response.text();
-  } catch {
+  } catch (err) {
+    console.debug(`[gitlab] Failed to fetch snippet ${snippetId} content:`, err);
     return null;
   }
 }
