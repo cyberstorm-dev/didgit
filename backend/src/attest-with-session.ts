@@ -75,11 +75,11 @@ export async function attestCommitWithSession(
     }
 
     // Create kernel client
+    // Note: entryPoint is inferred from the account in SDK v5.5+
     const kernelClient = createKernelAccountClient({
       account: kernelAccount,
       chain: baseSepolia,
-      bundlerTransport: viemHttp(config.bundlerRpc),
-      entryPoint
+      bundlerTransport: viemHttp(config.bundlerRpc)
     });
 
     // Encode contribution data according to schema
