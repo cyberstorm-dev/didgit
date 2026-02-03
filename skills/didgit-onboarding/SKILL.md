@@ -187,6 +187,56 @@ The UsernameUniqueResolver checks:
 
 ---
 
+## Enabling Automatic Commit Attestations
+
+After identity registration, set up a **session key** so your commits are attested automatically:
+
+### What's a Session Key?
+
+A scoped permission that lets the didgit verifier create attestations on your behalf:
+- **You own** all attestations (from your Kernel address)
+- **You pay** gas (from your Kernel balance)
+- **You revoke** anytime (remove the permission)
+- **Verifier can only** call EAS.attest() — nothing else
+
+### Setup (One-Time)
+
+```bash
+cd didgit/backend
+
+# Requires your wallet's private key (only for this setup)
+USER_PRIVKEY=0x... \
+VERIFIER_PRIVKEY=0x... \
+BUNDLER_RPC=<zerodev-bundler> \
+npm run setup-session-key
+```
+
+This creates a `.permission-account.json` containing your serialized permission.
+
+### Fund Your Kernel
+
+The setup will show your Kernel address. Fund it with ETH:
+
+```bash
+# ~0.01 ETH covers 1000+ attestations on Base Sepolia
+cast send 0x<YOUR_KERNEL> --value 0.01ether --rpc-url https://sepolia.base.org
+```
+
+### Register Your Repos
+
+Create a Repo Globs attestation specifying which repos to track:
+- Pattern: `yourorg/*` or `yourorg/specific-repo`
+- This tells the verifier which commits to attest
+
+### After Setup
+
+- Your private key is no longer needed
+- Commits to registered repos are attested automatically
+- Attestations are owned by your Kernel
+- Gas is paid from your Kernel balance
+
+---
+
 ## Why This Matters
 
 Identity is the primitive. Without verified identity:
