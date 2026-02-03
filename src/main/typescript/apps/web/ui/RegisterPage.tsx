@@ -14,6 +14,7 @@ import { ExpandMore, Warning } from '@mui/icons-material';
 import { AAWalletStatus } from './AAWalletStatus';
 import { useWallet } from '../wallet/WalletContext';
 import { GithubSection } from './GithubSection';
+import { CodebergSection } from './CodebergSection';
 import { AttestForm } from './AttestForm';
 import { VerifyPanel } from './VerifyPanel';
 import { StatsCard } from './StatsCard';
@@ -74,16 +75,21 @@ export const RegisterPage: React.FC = () => {
             </Typography>
           </Alert>
 
-          {/* Wallet and GitHub Connection */}
+          {/* Wallet and Platform Connection */}
           <Grid container spacing={3} sx={{ mb: 3 }}>
-            <Grid item xs={12} md={6}>
+            <Grid item xs={12} md={4}>
               <Paper elevation={2} sx={{ p: 3, height: '100%' }}>
                 <AAWalletStatus key={connected ? 'connected' : 'disconnected'} />
               </Paper>
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid item xs={12} md={4}>
               <Paper elevation={2} sx={{ p: 3, height: '100%' }}>
                 <GithubSection />
+              </Paper>
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <Paper elevation={2} sx={{ p: 3, height: '100%' }}>
+                <CodebergSection />
               </Paper>
             </Grid>
           </Grid>
@@ -103,13 +109,13 @@ export const RegisterPage: React.FC = () => {
                 Connect your wallet using Web3Auth (Google, GitHub, or email)
               </Typography>
               <Typography component="li" variant="body2">
-                Connect your GitHub account for identity verification
+                Connect your GitHub or Codeberg account for identity verification
               </Typography>
               <Typography component="li" variant="body2">
                 Fund your smart wallet to cover gas fees (~$0.01)
               </Typography>
               <Typography component="li" variant="body2">
-                Sign your GitHub username with your wallet
+                Sign your username with your wallet
               </Typography>
               <Typography component="li" variant="body2">
                 Create a proof Gist and submit the attestation
@@ -125,7 +131,7 @@ export const RegisterPage: React.FC = () => {
           What is didgit.dev?
         </Typography>
         <Typography variant="body2" sx={{ mb: 2 }}>
-          didgit.dev creates <strong>on-chain proof</strong> linking your GitHub username to your wallet address. 
+          didgit.dev creates <strong>on-chain proof</strong> linking your GitHub or Codeberg username to your wallet address. 
           This verified identity can be used for:
         </Typography>
         <Box component="ul" sx={{ pl: 2, '& li': { mb: 0.5 } }}>
