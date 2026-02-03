@@ -5,14 +5,15 @@
  * keeping only the most recent attestation per username.
  * 
  * Usage:
- *   DRY RUN:  npx ts-node tools/revoke-duplicates.ts
- *   EXECUTE:  PRIVATE_KEY=0x... npx ts-node tools/revoke-duplicates.ts --execute
+ *   DRY RUN:  npx ts-node backend/src/revoke-duplicates.ts
+ *   EXECUTE:  PRIVATE_KEY=0x... npx ts-node backend/src/revoke-duplicates.ts --execute
  */
 
 import { createPublicClient, createWalletClient, http, parseAbi, type WalletClient, type PublicClient } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { baseSepolia } from 'viem/chains';
 
+// Base Sepolia testnet configuration
 const EAS_GRAPHQL = 'https://base-sepolia.easscan.org/graphql';
 const EAS_ADDRESS = '0x4200000000000000000000000000000000000021';
 const IDENTITY_SCHEMA_UID = '0x6ba0509abc1a1ed41df2cce6cbc7350ea21922dae7fcbc408b54150a40be66af';
@@ -72,7 +73,13 @@ async function fetchIdentityAttestations(): Promise<Attestation[]> {
       throw new Error(`EAS API error: ${response.statusText}`);
     }
 
-    const data = await response.json() as { data?: { attestations?: Attestation[] } };
+    const data = await response.json() as { data?: { attestations?: Attestation[] }; errors?: Array<{ message: string }> };
+    
+    // Check for GraphQL errors
+    if (data.errors && data.errors.length > 0) {
+      throw new Error(`GraphQL error: ${data.errors.map(e => e.message).join(', ')}`);
+    }
+    
     const attestations = data?.data?.attestations ?? [];
     
     if (attestations.length === 0) {
