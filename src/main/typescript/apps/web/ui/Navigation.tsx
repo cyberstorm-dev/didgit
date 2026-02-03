@@ -7,9 +7,10 @@ import {
   Tabs,
   Tab,
 } from '@mui/material';
+import { BarChart } from '@mui/icons-material';
 import { WalletButton } from './WalletButton';
 
-export type Page = 'register' | 'settings';
+export type Page = 'register' | 'stats' | 'settings';
 
 interface NavigationProps {
   currentPage: Page;
@@ -50,6 +51,13 @@ export const Navigation: React.FC<NavigationProps> = ({ currentPage, onPageChang
             }}
           >
             <Tab label="Register" value="register" />
+            <Tab 
+              label="Stats" 
+              value="stats" 
+              icon={<BarChart sx={{ fontSize: 18 }} />}
+              iconPosition="start"
+              sx={{ minHeight: 48 }}
+            />
             <Tab label="Settings" value="settings" />
           </Tabs>
         </Box>
