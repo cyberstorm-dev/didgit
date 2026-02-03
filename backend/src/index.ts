@@ -6,7 +6,7 @@ import { startApiServer } from './api';
 dotenv.config();
 
 // Validate required env vars
-const required = ['VERIFIER_PRIVKEY', 'GITHUB_TOKEN'];
+const required = ['VERIFIER_PRIVKEY', 'GITHUB_TOKEN', 'USER_PRIVKEY'];
 const missing = required.filter(key => !process.env[key]);
 
 if (missing.length > 0) {

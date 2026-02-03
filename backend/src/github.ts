@@ -77,7 +77,7 @@ export async function getCommit(
     };
   } catch (e) {
     console.error(`[github] Failed to fetch commit ${sha}:`, e);
-    return null;
+    throw e;
   }
 }
 
