@@ -1,7 +1,7 @@
 import { createPublicClient, http, type Address, type Hex, parseAbi } from 'viem';
 import { baseSepolia } from 'viem/chains';
 import { getRecentCommits, matchCommitToGitHubUser, listOrgRepos, listUserRepos, type CommitInfo } from './github';
-import { attestCommit } from './attest';
+import { attestCommitWithKernel } from './attest-with-kernel';
 
 const RESOLVER_ADDRESS = '0xf20e5d52acf8fc64f5b456580efa3d8e4dcf16c7' as Address;
 const EAS_ADDRESS = '0x4200000000000000000000000000000000000021' as Address;
@@ -254,10 +254,13 @@ export class AttestationService {
 
         console.log(`[service] Attesting commit ${commit.sha.slice(0, 8)} by ${githubUsername}...`);
 
-        // Attest the commit via verifier (direct EAS call)
-        // Verifier pays gas, attests on behalf of user
-        const result = await attestCommit({
-          userWalletAddress: user.walletAddress,
+        // Attest the commit via user's Kernel (user pays gas)
+        // Requires USER_PRIVKEY for kernel reconstruction + permission validator
+        const result = await attestCommitWithKernel({
+          user: {
+            kernelAddress: user.kernelAddress,
+            userEOA: user.walletAddress
+          },
           identityAttestationUid: user.identityAttestationUid,
           commitHash: commit.sha,
           repoOwner: repo.owner,
