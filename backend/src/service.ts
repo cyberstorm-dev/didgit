@@ -1,7 +1,7 @@
 import { createPublicClient, http, type Address, type Hex, parseAbi } from 'viem';
 import { baseSepolia } from 'viem/chains';
 import { getRecentCommits, matchCommitToGitHubUser, listOrgRepos, listUserRepos, type CommitInfo } from './github';
-import { attestCommitWithKernel, type UserKernelInfo } from './attest-with-kernel';
+import { attestCommit } from './attest';
 
 const RESOLVER_ADDRESS = '0xf20e5d52acf8fc64f5b456580efa3d8e4dcf16c7' as Address;
 const EAS_ADDRESS = '0x4200000000000000000000000000000000000021' as Address;
@@ -86,8 +86,8 @@ export class AttestationService {
         })
       ]);
 
-      const identityData = await identityRes.json();
-      const repoGlobsData = await repoGlobsRes.json();
+      const identityData = await identityRes.json() as { data?: { attestations?: any[] } };
+      const repoGlobsData = await repoGlobsRes.json() as { data?: { attestations?: any[] } };
 
       const identities = identityData?.data?.attestations ?? [];
       const repoGlobsAtts = repoGlobsData?.data?.attestations ?? [];
@@ -254,18 +254,15 @@ export class AttestationService {
 
         console.log(`[service] Attesting commit ${commit.sha.slice(0, 8)} by ${githubUsername}...`);
 
-        // Attest the commit via user's Kernel (permission-based)
-        // Always use GitHub username for consistency in leaderboards
-        const result = await attestCommitWithKernel({
-          user: {
-            kernelAddress: user.kernelAddress,
-            userEOA: user.walletAddress
-          },
+        // Attest the commit via verifier (direct EAS call)
+        // Verifier pays gas, attests on behalf of user
+        const result = await attestCommit({
+          userWalletAddress: user.walletAddress,
           identityAttestationUid: user.identityAttestationUid,
           commitHash: commit.sha,
           repoOwner: repo.owner,
           repoName: repo.name,
-          author: githubUsername, // Use GitHub username, not git author name
+          author: githubUsername, // Use GitHub username for consistency in leaderboards
           message: commit.message
         });
 
