@@ -2,26 +2,34 @@ import React, { useMemo, useState } from 'react';
 import { z } from 'zod';
 import { useWallet } from '../wallet/WalletContext';
 import { useGithubAuth } from '../auth/useGithub';
+import { useCodebergAuth } from '../auth/useCodeberg';
 import { appConfig } from '../utils/config';
 import { attestIdentityBinding, encodeBindingData, EASAddresses } from '../utils/eas';
 import { Hex, verifyMessage } from 'viem';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Alert } from '../components/ui/alert';
+import { createPublicGist as createCodebergGist } from '../auth/codeberg';
+
+type Platform = 'github' | 'codeberg';
 
 const formSchema = z.object({
-  github_username: z.string().min(1).max(39),
+  username: z.string().min(1).max(39),
 });
 
 export const AttestForm: React.FC = () => {
   const { address, smartAddress, signMessage, connected, getWalletClient, getSmartWalletClient, canAttest, isContract, balanceWei, refreshOnchain, ensureAa, lastError } = useWallet();
-  const { user, token } = useGithubAuth();
+  const { user: ghUser, token: ghToken } = useGithubAuth();
+  const { user: cbUser, token: cbToken, domain: cbDomain } = useCodebergAuth();
   const cfg = useMemo(() => appConfig(), []);
   const easReady = !!cfg.EAS_ADDRESS;
   const isMainnet = cfg.CHAIN_ID === 8453;
   const blockExplorerUrl = isMainnet ? 'https://basescan.org' : 'https://sepolia.basescan.org';
   const easExplorerUrl = isMainnet ? 'https://base.easscan.org' : 'https://base-sepolia.easscan.org';
-  const [form, setForm] = useState({ github_username: '' });
+  
+  // Platform selection state
+  const [platform, setPlatform] = useState<Platform>('github');
+  const [form, setForm] = useState({ username: '' });
   const [gistUrl, setGistUrl] = useState<string | null>(null);
   const [signature, setSignature] = useState<Hex | null>(null);
   const [busySign, setBusySign] = useState(false);
@@ -31,16 +39,38 @@ export const AttestForm: React.FC = () => {
   const [txHash, setTxHash] = useState<Hex | null>(null);
   const [attestationUid, setAttestationUid] = useState<Hex | null>(null);
 
+  // Determine current user and token based on platform
+  const user = platform === 'github' ? ghUser : cbUser;
+  const token = platform === 'github' ? ghToken : cbToken;
+  
+  // Get the domain for the current platform
+  const getDomain = () => {
+    if (platform === 'github') return 'github.com';
+    return cbDomain; // Already includes custom host if set
+  };
+
   const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
   };
 
-  // Pre-fill username from GitHub auth and force lowercase
+  // Pre-fill username from connected platform auth and force lowercase
   React.useEffect(() => {
     if (user?.login) {
-      setForm((f) => ({ ...f, github_username: user.login.toLowerCase() }));
+      setForm((f) => ({ ...f, username: user.login.toLowerCase() }));
     }
   }, [user?.login]);
+
+  // Reset state when platform changes
+  React.useEffect(() => {
+    setGistUrl(null);
+    setSignature(null);
+    setTxHash(null);
+    setAttestationUid(null);
+    setError(null);
+    // Update username for new platform
+    const newUser = platform === 'github' ? ghUser : cbUser;
+    setForm({ username: newUser?.login?.toLowerCase() || '' });
+  }, [platform, ghUser, cbUser]);
 
   const doSign = async () => {
     setError(null);
@@ -49,7 +79,8 @@ export const AttestForm: React.FC = () => {
     if (!parsed.success) return setError(parsed.error.errors[0]?.message ?? 'Invalid input');
     try {
       setBusySign(true);
-      const msg = `github.com:${parsed.data.github_username}`;
+      const domain = getDomain();
+      const msg = `${domain}:${parsed.data.username}`;
       const sig = await signMessage({ message: msg });
       // verify matches connected wallet
       const ok = await verifyMessage({ message: msg, signature: sig, address });
@@ -79,7 +110,7 @@ export const AttestForm: React.FC = () => {
     }
   ] as const;
 
-  const setDefaultRepoPattern = async (username: string, walletClient: any) => {
+  const setDefaultRepoPattern = async (username: string, domain: string, walletClient: any) => {
     const resolverAddress = cfg.RESOLVER_ADDRESS as `0x${string}` | undefined;
     if (!resolverAddress) {
       throw new Error('Resolver address not configured');
@@ -90,7 +121,7 @@ export const AttestForm: React.FC = () => {
       address: resolverAddress,
       abi: UsernameUniqueResolverABI,
       functionName: 'setRepoPattern',
-      args: ['github.com', username, '*', '*', true],
+      args: [domain, username, '*', '*', true],
       gas: BigInt(200000),
     });
   };
@@ -102,7 +133,7 @@ export const AttestForm: React.FC = () => {
     if (!connected || !address) return setError('Connect wallet first');
     const parsed = formSchema.safeParse(form);
     if (!parsed.success) return setError(parsed.error.errors[0]?.message ?? 'Invalid input');
-    if (!signature) return setError('Sign your GitHub username first');
+    if (!signature) return setError(`Sign your ${platform === 'github' ? 'GitHub' : 'Codeberg'} username first`);
     if (!gistUrl) return setError('Create a proof gist first');
     if (!easReady) return setError('EAS contract address not configured (set VITE_EAS_ADDRESS)');
 
@@ -121,11 +152,12 @@ export const AttestForm: React.FC = () => {
     if (!addrPattern.test(accountAddress)) return setError('Resolved account address is invalid');
     if (!addrPattern.test(easEnv.contract as string)) return setError('EAS contract address is invalid');
 
+    const domain = getDomain();
     const data = {
-      domain: 'github.com',
-      username: parsed.data.github_username,
+      domain,
+      username: parsed.data.username,
       wallet: address!, // Use EOA address instead of smart address
-      message: `github.com:${parsed.data.github_username}`,
+      message: `${domain}:${parsed.data.username}`,
       signature: signature,
       proof_url: gistUrl,
     };
@@ -157,7 +189,7 @@ export const AttestForm: React.FC = () => {
 
         // Auto-set default */* pattern after successful attestation
         try {
-          await setDefaultRepoPattern(parsed.data.github_username, aaClient);
+          await setDefaultRepoPattern(parsed.data.username, domain, aaClient);
         } catch (e) {
           // Don't fail the whole attestation if pattern setting fails
           console.warn('Failed to set default repository pattern:', e);
@@ -179,32 +211,49 @@ export const AttestForm: React.FC = () => {
 
   const createGist = async () => {
     setError(null);
-    if (!token) return setError('Connect GitHub first');
+    if (!token) return setError(`Connect ${platform === 'github' ? 'GitHub' : 'Codeberg'} first`);
     try {
       setBusyGist(true);
+      const domain = getDomain();
       // Create JSON proof content
       const proofData = {
-        domain: 'github.com',
-        username: form.github_username,
+        domain,
+        username: form.username,
         wallet: address ?? '',
-        message: `github.com:${form.github_username}`,
+        message: `${domain}:${form.username}`,
         signature: signature ?? '<sign in app>',
         chain_id: cfg.CHAIN_ID,
         schema_uid: cfg.EAS_SCHEMA_UID,
       };
       const content = JSON.stringify(proofData, null, 2);
-      const res = await fetch('https://api.github.com/gists', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token.access_token}`, 'Content-Type': 'application/json', Accept: 'application/vnd.github+json' },
-        body: JSON.stringify({
-          description: 'GitHub activity attestation proof',
-          public: true,
-          files: { ['didgit.dev-proof.json']: { content } },
-        }),
-      });
-      if (!res.ok) throw new Error('Failed to create gist');
-      const json = await res.json();
-      if (json.html_url) setGistUrl(json.html_url as string);
+      
+      if (platform === 'github') {
+        // GitHub gist creation
+        const res = await fetch('https://api.github.com/gists', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token.access_token}`, 'Content-Type': 'application/json', Accept: 'application/vnd.github+json' },
+          body: JSON.stringify({
+            description: 'GitHub activity attestation proof',
+            public: true,
+            files: { ['didgit.dev-proof.json']: { content } },
+          }),
+        });
+        if (!res.ok) throw new Error('Failed to create gist');
+        const json = await res.json();
+        if (json.html_url) setGistUrl(json.html_url as string);
+      } else {
+        // Codeberg/Gitea gist creation
+        const result = await createCodebergGist(
+          cbToken!,
+          {
+            description: `${domain} activity attestation proof`,
+            files: [{ filename: 'didgit.dev-proof.json', content }],
+            public: true,
+          },
+          cbDomain !== 'codeberg.org' ? cbDomain : undefined
+        );
+        setGistUrl(result.html_url);
+      }
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -212,17 +261,47 @@ export const AttestForm: React.FC = () => {
     }
   };
 
+  const domain = getDomain();
+  const platformLabel = platform === 'github' ? 'GitHub' : (cbDomain === 'codeberg.org' ? 'Codeberg' : cbDomain);
+
   return (
     <section>
-      <h3 className="text-lg font-semibold mb-2">Create GitHub Identity Attestation</h3>
+      <h3 className="text-lg font-semibold mb-2">Create Identity Attestation</h3>
       <div className="max-w-2xl space-y-3">
+        {/* Platform selector */}
+        <div className="flex gap-2 mb-4">
+          <Button
+            variant={platform === 'github' ? 'default' : 'outline'}
+            onClick={() => setPlatform('github')}
+            size="sm"
+          >
+            GitHub
+          </Button>
+          <Button
+            variant={platform === 'codeberg' ? 'default' : 'outline'}
+            onClick={() => setPlatform('codeberg')}
+            size="sm"
+          >
+            Codeberg / Gitea
+          </Button>
+        </div>
+
         <div>
-          <label className="text-sm text-gray-600">GitHub Username (will sign "github.com:username")</label>
-          <Input name="github_username" value={form.github_username} onChange={onChange} placeholder="Connect GitHub first" disabled readOnly />
+          <label className="text-sm text-gray-600">
+            {platformLabel} Username (will sign "{domain}:username")
+          </label>
+          <Input 
+            name="username" 
+            value={form.username} 
+            onChange={onChange} 
+            placeholder={`Connect ${platformLabel} first`} 
+            disabled 
+            readOnly 
+          />
         </div>
         <div className="flex gap-2 flex-wrap items-center">
-          <Button onClick={doSign} disabled={busySign || !address || !form.github_username}>
-            {busySign ? 'Signing…' : `Sign "github.com:${form.github_username}"`}
+          <Button onClick={doSign} disabled={busySign || !address || !form.username}>
+            {busySign ? 'Signing…' : `Sign "${domain}:${form.username}"`}
           </Button>
           {!gistUrl ? (
             <Button onClick={createGist} disabled={!token || busyGist} variant="outline">
@@ -235,6 +314,11 @@ export const AttestForm: React.FC = () => {
             {busyAttest ? 'Submitting…' : 'Submit Attestation'}
           </Button>
         </div>
+        {!user && (
+          <Alert>
+            Connect {platformLabel} above to attest your identity.
+          </Alert>
+        )}
         {smartAddress && balanceWei !== null && balanceWei === 0n && (
           <Alert>
             AA wallet has 0 balance on {isMainnet ? 'Base' : 'Base Sepolia'}. Fund it, then <button className="underline" onClick={() => refreshOnchain()}>refresh</button>.

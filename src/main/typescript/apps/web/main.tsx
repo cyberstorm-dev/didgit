@@ -3,6 +3,7 @@ import './polyfills/webcrypto';
 import { createRoot } from 'react-dom/client';
 import { AppMUI } from './ui/AppMUI';
 import { GithubAuthProvider } from './auth/useGithub';
+import { CodebergAuthProvider } from './auth/useCodeberg';
 import { Web3AuthProvider } from './web3auth/Web3AuthProvider';
 import { ThemeProvider } from './providers/ThemeProvider';
 import { WalletProvider } from './wallet/WalletContext';
@@ -15,7 +16,9 @@ createRoot(el).render(
     <Web3AuthProvider>
       <WalletProvider>
         <GithubAuthProvider>
-          <AppMUI />
+          <CodebergAuthProvider>
+            <AppMUI />
+          </CodebergAuthProvider>
         </GithubAuthProvider>
       </WalletProvider>
     </Web3AuthProvider>

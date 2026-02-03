@@ -1,6 +1,7 @@
 import { createPublicClient, http, type Address, type Hex, parseAbi } from 'viem';
 import { baseSepolia } from 'viem/chains';
-import { getRecentCommits, matchCommitToGitHubUser, listOrgRepos, listUserRepos, type CommitInfo } from './github';
+import { getRecentCommits as getGithubRecentCommits, matchCommitToGitHubUser, listOrgRepos as listGithubOrgRepos, listUserRepos as listGithubUserRepos, type CommitInfo } from './github';
+import { getRecentCommits as getGiteaRecentCommits, matchCommitToGiteaUser, listOrgRepos as listGiteaOrgRepos, listUserRepos as listGiteaUserRepos } from './gitea';
 import { attestCommitWithKernel, type UserKernelInfo } from './attest-with-kernel';
 
 const RESOLVER_ADDRESS = '0xf20e5d52acf8fc64f5b456580efa3d8e4dcf16c7' as Address;
@@ -20,7 +21,8 @@ const easAbi = parseAbi([
 ]);
 
 interface RegisteredUser {
-  githubUsername: string;
+  username: string;               // Platform username (GitHub, Codeberg, etc.)
+  domain: string;                 // Platform domain (github.com, codeberg.org, or self-hosted)
   walletAddress: Address;         // User's EOA
   kernelAddress: Address;         // User's Kernel smart account
   identityAttestationUid: Hex;
@@ -30,6 +32,38 @@ interface RegisteredUser {
 interface RepoToWatch {
   owner: string;
   name: string;
+  domain: string;                 // Platform domain for API calls
+}
+
+/**
+ * Determine if a domain is GitHub
+ */
+function isGitHub(domain: string): boolean {
+  return domain.toLowerCase() === 'github.com';
+}
+
+/**
+ * Determine if a domain is GitLab (for future support)
+ */
+function isGitLab(domain: string): boolean {
+  return domain.toLowerCase() === 'gitlab.com';
+}
+
+/**
+ * Determine if a domain is Gitea/Codeberg (anything not GitHub/GitLab)
+ */
+function isGitea(domain: string): boolean {
+  return !isGitHub(domain) && !isGitLab(domain);
+}
+
+/**
+ * Get the custom host for Gitea API calls (null for codeberg.org as it's the default)
+ */
+function getGiteaHost(domain: string): string | undefined {
+  if (domain.toLowerCase() === 'codeberg.org') {
+    return undefined; // Use default
+  }
+  return domain;
 }
 
 export class AttestationService {
@@ -102,40 +136,52 @@ export class AttestationService {
             const globs = globsField.value.value.split(',').map((g: string) => g.trim());
             globsByIdentity.set(att.refUID.toLowerCase(), globs);
           }
-        } catch {}
+        } catch (e) {
+          console.debug('[service] Failed to parse repo globs attestation:', e);
+        }
       }
 
       // Build registered users
       const users: RegisteredUser[] = [];
-      const seenUsernames = new Set<string>();
+      const seenIdentities = new Set<string>(); // Use domain:username as key
 
       for (const att of identities) {
         try {
           const decoded = JSON.parse(att.decodedDataJson);
           const usernameField = decoded.find((d: any) => d.name === 'username');
-          const username = usernameField?.value?.value;
+          const domainField = decoded.find((d: any) => d.name === 'domain');
           
-          if (!username || seenUsernames.has(username.toLowerCase())) continue;
-          seenUsernames.add(username.toLowerCase());
+          const username = usernameField?.value?.value;
+          // Default to github.com for backwards compatibility with older attestations
+          const domain = domainField?.value?.value || 'github.com';
+          
+          if (!username) continue;
+          
+          const identityKey = `${domain.toLowerCase()}:${username.toLowerCase()}`;
+          if (seenIdentities.has(identityKey)) continue;
+          seenIdentities.add(identityKey);
 
           const repoGlobs = globsByIdentity.get(att.id.toLowerCase()) || [];
           
           // Only include users with repo globs registered
           if (repoGlobs.length === 0) {
-            console.log(`[service] Skipping ${username}: no repo globs registered`);
+            console.log(`[service] Skipping ${domain}:${username}: no repo globs registered`);
             continue;
           }
 
           users.push({
-            githubUsername: username,
+            username,
+            domain,
             walletAddress: att.recipient as Address,
             kernelAddress: '0x2Ce0cE887De4D0043324C76472f386dC5d454e96' as Address, // TODO: lookup from registry
             identityAttestationUid: att.id as Hex,
             repoGlobs
           });
 
-          console.log(`[service] Found user: ${username} with globs: ${repoGlobs.join(', ')}`);
-        } catch {}
+          console.log(`[service] Found user: ${domain}:${username} with globs: ${repoGlobs.join(', ')}`);
+        } catch (e) {
+          console.debug('[service] Failed to parse identity attestation:', e);
+        }
       }
 
       return users;
@@ -152,33 +198,49 @@ export class AttestationService {
     const seen = new Set<string>();
     
     for (const user of users) {
+      const { domain } = user;
+      
       for (const glob of user.repoGlobs) {
         // Parse glob: "owner/*" or "owner/repo"
         const [owner, repoPattern] = glob.split('/');
         
         if (repoPattern === '*') {
           // Wildcard: fetch all repos for org/user
-          console.log(`[service] Fetching repos for ${owner}/*`);
+          console.log(`[service] Fetching repos for ${domain}:${owner}/*`);
           
-          // Try as org first, then as user
-          let orgRepos = await listOrgRepos(owner);
-          if (orgRepos.length === 0) {
-            orgRepos = await listUserRepos(owner);
+          let fetchedRepos: { owner: string; name: string }[] = [];
+          
+          if (isGitHub(domain)) {
+            // Try as org first, then as user
+            fetchedRepos = await listGithubOrgRepos(owner);
+            if (fetchedRepos.length === 0) {
+              fetchedRepos = await listGithubUserRepos(owner);
+            }
+          } else if (isGitea(domain)) {
+            // Gitea/Codeberg: try as org first, then as user
+            const customHost = getGiteaHost(domain);
+            fetchedRepos = await listGiteaOrgRepos(owner, customHost);
+            if (fetchedRepos.length === 0) {
+              fetchedRepos = await listGiteaUserRepos(owner, customHost);
+            }
+          } else {
+            console.log(`[service] Unsupported platform: ${domain}`);
+            continue;
           }
           
-          for (const repo of orgRepos) {
-            const key = `${repo.owner}/${repo.name}`;
+          for (const repo of fetchedRepos) {
+            const key = `${domain}:${repo.owner}/${repo.name}`;
             if (!seen.has(key)) {
               seen.add(key);
-              repos.push(repo);
+              repos.push({ owner: repo.owner, name: repo.name, domain });
             }
           }
         } else {
           // Specific repo
-          const key = `${owner}/${repoPattern}`;
+          const key = `${domain}:${owner}/${repoPattern}`;
           if (!seen.has(key)) {
             seen.add(key);
-            repos.push({ owner, name: repoPattern });
+            repos.push({ owner, name: repoPattern, domain });
           }
         }
       }
@@ -203,13 +265,21 @@ export class AttestationService {
   }
 
   async processRepo(repo: RepoToWatch, users: RegisteredUser[]): Promise<number> {
-    console.log(`[service] Processing ${repo.owner}/${repo.name}...`);
+    console.log(`[service] Processing ${repo.domain}:${repo.owner}/${repo.name}...`);
     
     try {
-      // Get recent commits since last check
-      let commits;
+      // Get recent commits since last check using platform-specific API
+      let commits: CommitInfo[];
       try {
-        commits = await getRecentCommits(repo.owner, repo.name, this.lastCheckTime);
+        if (isGitHub(repo.domain)) {
+          commits = await getGithubRecentCommits(repo.owner, repo.name, this.lastCheckTime);
+        } else if (isGitea(repo.domain)) {
+          const customHost = getGiteaHost(repo.domain);
+          commits = await getGiteaRecentCommits(repo.owner, repo.name, this.lastCheckTime, customHost);
+        } else {
+          console.log(`[service] Unsupported platform: ${repo.domain}`);
+          return 0;
+        }
       } catch (e: any) {
         if (e.status === 404) {
           console.log(`[service] Skipped ${repo.owner}/${repo.name}: not found or private`);
@@ -237,25 +307,36 @@ export class AttestationService {
       let attestedCount = 0;
 
       for (const commit of newCommits) {
-        // Match commit to registered user
-        const githubUsername = matchCommitToGitHubUser(commit);
+        // Match commit to registered user using platform-specific matcher
+        let platformUsername: string | null;
+        if (isGitHub(repo.domain)) {
+          platformUsername = matchCommitToGitHubUser(commit);
+        } else if (isGitea(repo.domain)) {
+          platformUsername = matchCommitToGiteaUser(commit);
+        } else {
+          platformUsername = null;
+        }
         
-        if (!githubUsername) {
-          console.log(`[service] Skipping commit ${commit.sha.slice(0, 8)} - no GitHub username`);
+        if (!platformUsername) {
+          console.log(`[service] Skipping commit ${commit.sha.slice(0, 8)} - no platform username`);
           continue;
         }
 
-        const user = users.find(u => u.githubUsername.toLowerCase() === githubUsername.toLowerCase());
+        // Find user matching both username AND domain
+        const user = users.find(
+          u => u.username.toLowerCase() === platformUsername!.toLowerCase() &&
+               u.domain.toLowerCase() === repo.domain.toLowerCase()
+        );
         
         if (!user) {
-          console.log(`[service] Skipping commit ${commit.sha.slice(0, 8)} by ${githubUsername} - not registered`);
+          console.log(`[service] Skipping commit ${commit.sha.slice(0, 8)} by ${repo.domain}:${platformUsername} - not registered`);
           continue;
         }
 
-        console.log(`[service] Attesting commit ${commit.sha.slice(0, 8)} by ${githubUsername}...`);
+        console.log(`[service] Attesting commit ${commit.sha.slice(0, 8)} by ${repo.domain}:${platformUsername}...`);
 
         // Attest the commit via user's Kernel (permission-based)
-        // Always use GitHub username for consistency in leaderboards
+        // Use platform username for consistency in leaderboards
         const result = await attestCommitWithKernel({
           user: {
             kernelAddress: user.kernelAddress,
@@ -265,7 +346,7 @@ export class AttestationService {
           commitHash: commit.sha,
           repoOwner: repo.owner,
           repoName: repo.name,
-          author: githubUsername, // Use GitHub username, not git author name
+          author: platformUsername, // Use platform username, not git author name
           message: commit.message
         });
 
