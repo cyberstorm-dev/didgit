@@ -57,11 +57,10 @@ export async function attestCommitWithPermissions(
 
     // Import ZeroDev modules
     const { toPermissionValidator } = await import('@zerodev/permissions');
-    const { toECDSASigner } = await import('@zerodev/permissions');
-    const { toCallPolicy, CallPolicyVersion } = await import('@zerodev/permissions');
+    const { toECDSASigner } = await import('@zerodev/permissions/signers');
+    const { toCallPolicy, CallPolicyVersion } = await import('@zerodev/permissions/policies');
     const { getEntryPoint, KERNEL_V3_1 } = await import('@zerodev/sdk/constants');
-    const { createKernelAccountClient, createZeroDevPaymasterClient } = await import('@zerodev/sdk');
-    const { http: bundlerHttp } = await import('viem');
+    const { createKernelAccountClient } = await import('@zerodev/sdk');
 
     const entryPoint = getEntryPoint('0.7');
     const kernelVersion = KERNEL_V3_1;
@@ -83,14 +82,14 @@ export async function attestCommitWithPermissions(
           target: EAS_ADDRESS,
           abi: easAbi,
           functionName: 'attest',
-          valueLimit: 0n
+          valueLimit: BigInt(0)
         }
       ]
     });
 
     // Create permission validator
     console.log('[attest-perm] Creating permission validator...');
-    const permissionValidator = await toPermissionValidator(publicClient, {
+    const permissionValidator = await toPermissionValidator(publicClient as any, {
       signer: verifierSigner,
       policies: [callPolicy],
       entryPoint,
@@ -106,16 +105,16 @@ export async function attestCommitWithPermissions(
         address: req.userKernelAddress,
         entryPoint,
         kernelVersion
-      },
+      } as any,
       chain: baseSepolia,
       bundlerTransport: http(BUNDLER_RPC),
       middleware: {
-        sponsorUserOperation: async ({ userOperation }) => {
+        sponsorUserOperation: async ({ userOperation }: { userOperation: any }) => {
           // No paymaster - user pays own gas
           return userOperation;
         }
       }
-    });
+    } as any);
 
     // Encode contribution data
     const contributionData = encodeAbiParameters(
@@ -147,7 +146,7 @@ export async function attestCommitWithPermissions(
 
     // Send UserOp via the Kernel client
     // This creates a UserOp with sender=userKernelAddress, signed with verifier's permission
-    const txHash = await kernelClient.writeContract({
+    const txHash = await (kernelClient as any).writeContract({
       address: EAS_ADDRESS,
       abi: easAbi,
       functionName: 'attest',

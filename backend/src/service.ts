@@ -86,8 +86,8 @@ export class AttestationService {
         })
       ]);
 
-      const identityData = await identityRes.json();
-      const repoGlobsData = await repoGlobsRes.json();
+      const identityData = await identityRes.json() as { data?: { attestations?: any[] } };
+      const repoGlobsData = await repoGlobsRes.json() as { data?: { attestations?: any[] } };
 
       const identities = identityData?.data?.attestations ?? [];
       const repoGlobsAtts = repoGlobsData?.data?.attestations ?? [];
