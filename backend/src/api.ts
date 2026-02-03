@@ -19,6 +19,14 @@ const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
 const RATE_LIMIT_MAX_REQUESTS = 10;
 
+// Clean up expired rate limit entries periodically (prevent memory leak)
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, record] of rateLimitMap) {
+    if (now > record.resetAt) rateLimitMap.delete(key);
+  }
+}, RATE_LIMIT_WINDOW_MS);
+
 interface RegisteredIdentity {
   githubUsername: string;
   walletAddress: Address;
@@ -123,9 +131,20 @@ function checkRateLimit(identityKey: string): boolean {
 export function createApiServer() {
   const app = express();
 
-  // CORS configuration - restrict in production via CORS_ORIGINS env var
-  const corsOrigins = process.env.CORS_ORIGINS?.split(',').map(o => o.trim()) || [];
-  app.use(cors(corsOrigins.length > 0 ? { origin: corsOrigins } : undefined));
+  // CORS configuration - MUST set CORS_ORIGINS in production
+  // Default: restrictive (same-origin only) unless explicitly configured
+  const corsOrigins = process.env.CORS_ORIGINS?.split(',').map(o => o.trim()).filter(Boolean);
+  if (corsOrigins && corsOrigins.length > 0) {
+    app.use(cors({ origin: corsOrigins }));
+  } else if (process.env.NODE_ENV === 'development') {
+    // Allow all origins only in development
+    console.warn('[api] ⚠️ CORS_ORIGINS not set - allowing all origins (dev mode)');
+    app.use(cors());
+  } else {
+    // Production default: same-origin only
+    console.warn('[api] ⚠️ CORS_ORIGINS not set - restricting to same-origin');
+    app.use(cors({ origin: false }));
+  }
   
   // Limit request body size to prevent DoS
   app.use(express.json({ limit: '10kb' }));
@@ -267,6 +286,14 @@ export function createApiServer() {
   // Get attestations for a user
   app.get('/api/attestations/:githubUsername', async (req: Request, res: Response) => {
     const { githubUsername } = req.params;
+
+    // Validate GitHub username format
+    if (!GITHUB_NAME_REGEX.test(githubUsername)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid GitHub username format'
+      });
+    }
 
     // TODO: Query EAS for contribution attestations by this user
     res.json({
