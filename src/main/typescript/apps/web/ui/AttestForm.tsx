@@ -5,8 +5,34 @@ import { useGithubAuth } from '../auth/useGithub';
 import { appConfig } from '../utils/config';
 import { attestIdentityBinding, encodeBindingData, EASAddresses, getChainConfig } from '../utils/eas';
 import { Hex, verifyMessage, createPublicClient, http } from 'viem';
-import { UsernameUniqueResolverABI } from '@didgit/abi';
 import { Button } from '../components/ui/button';
+
+// UsernameUniqueResolver ABI (functions needed for duplicate prevention and repo patterns)
+const UsernameUniqueResolverABI = [
+  {
+    type: 'function',
+    name: 'getIdentityOwner',
+    inputs: [
+      { name: 'domain', type: 'string' },
+      { name: 'username', type: 'string' }
+    ],
+    outputs: [{ name: '', type: 'address' }],
+    stateMutability: 'view'
+  },
+  {
+    type: 'function',
+    name: 'setRepositoryPattern',
+    inputs: [
+      { name: 'domain', type: 'string' },
+      { name: 'username', type: 'string' },
+      { name: 'namespace', type: 'string' },
+      { name: 'name', type: 'string' },
+      { name: 'enabled', type: 'bool' }
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable'
+  }
+] as const;
 import { Input } from '../components/ui/input';
 import { Alert } from '../components/ui/alert';
 
@@ -63,24 +89,7 @@ export const AttestForm: React.FC = () => {
     }
   };
 
-  // UsernameUniqueResolver ABI (just the setRepoPattern function)
-  const UsernameUniqueResolverABI = [
-    {
-      "type": "function",
-      "name": "setRepoPattern",
-      "inputs": [
-        { "name": "domain", "type": "string" },
-        { "name": "username", "type": "string" },
-        { "name": "namespace", "type": "string" },
-        { "name": "name", "type": "string" },
-        { "name": "enabled", "type": "bool" }
-      ],
-      "outputs": [],
-      "stateMutability": "nonpayable"
-    }
-  ] as const;
-
-  const setDefaultRepoPattern = async (username: string, walletClient: any) => {
+  const setDefaultRepoPattern = async (username: string, walletClient: { writeContract: (args: unknown) => Promise<unknown> }) => {
     const resolverAddress = cfg.RESOLVER_ADDRESS as `0x${string}` | undefined;
     if (!resolverAddress) {
       throw new Error('Resolver address not configured');
@@ -90,7 +99,7 @@ export const AttestForm: React.FC = () => {
     await walletClient.writeContract({
       address: resolverAddress,
       abi: UsernameUniqueResolverABI,
-      functionName: 'setRepoPattern',
+      functionName: 'setRepositoryPattern',
       args: ['github.com', username, '*', '*', true],
       gas: BigInt(200000),
     });
@@ -194,10 +203,17 @@ export const AttestForm: React.FC = () => {
         }
       }
     } catch (e) {
+      // Build error context without async calls to avoid potential double-throws
+      let hasAaClient = false;
+      try {
+        hasAaClient = !!(await getSmartWalletClient());
+      } catch {
+        // Ignore - just report false
+      }
       const ctx = {
         eoaAddress: address ?? null,
         easContract: ((): string | null => { try { return EASAddresses.forChain(cfg.CHAIN_ID, cfg).contract as unknown as string; } catch { return null; } })(),
-        hasAaClient: !!(await getSmartWalletClient()),
+        hasAaClient,
         hasSig: !!signature,
         hasGist: !!gistUrl,
       };

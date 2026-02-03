@@ -9,7 +9,7 @@
  *   EXECUTE:  PRIVATE_KEY=0x... npx ts-node tools/revoke-duplicates.ts --execute
  */
 
-import { createPublicClient, createWalletClient, http, parseAbi } from 'viem';
+import { createPublicClient, createWalletClient, http, parseAbi, type WalletClient, type PublicClient } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { baseSepolia } from 'viem/chains';
 
@@ -36,11 +36,17 @@ interface DecodedField {
 }
 
 async function fetchIdentityAttestations(): Promise<Attestation[]> {
+  const PAGE_SIZE = 100;
+  const allAttestations: Attestation[] = [];
+  let skip = 0;
+
   const query = `
-    query GetIdentities($schemaId: String!) {
+    query GetIdentities($schemaId: String!, $take: Int!, $skip: Int!) {
       attestations(
         where: { schemaId: { equals: $schemaId }, revoked: { equals: false } }
         orderBy: { time: asc }
+        take: $take
+        skip: $skip
       ) {
         id
         attester
@@ -52,21 +58,37 @@ async function fetchIdentityAttestations(): Promise<Attestation[]> {
     }
   `;
 
-  const response = await fetch(EAS_GRAPHQL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      query,
-      variables: { schemaId: IDENTITY_SCHEMA_UID }
-    })
-  });
+  while (true) {
+    const response = await fetch(EAS_GRAPHQL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query,
+        variables: { schemaId: IDENTITY_SCHEMA_UID, take: PAGE_SIZE, skip }
+      })
+    });
 
-  if (!response.ok) {
-    throw new Error(`EAS API error: ${response.statusText}`);
+    if (!response.ok) {
+      throw new Error(`EAS API error: ${response.statusText}`);
+    }
+
+    const data = await response.json() as { data?: { attestations?: Attestation[] } };
+    const attestations = data?.data?.attestations ?? [];
+    
+    if (attestations.length === 0) {
+      break;
+    }
+    
+    allAttestations.push(...attestations);
+    
+    if (attestations.length < PAGE_SIZE) {
+      break;
+    }
+    
+    skip += PAGE_SIZE;
   }
 
-  const data = await response.json() as { data?: { attestations?: Attestation[] } };
-  return data?.data?.attestations ?? [];
+  return allAttestations;
 }
 
 function extractUsername(attestation: Attestation): string | null {
@@ -104,16 +126,31 @@ function findDuplicates(attestations: Attestation[]): Map<string, Attestation[]>
   return duplicates;
 }
 
-async function revokeAttestation(uid: string, walletClient: any): Promise<string> {
+interface RevokeClients {
+  walletClient: WalletClient;
+  publicClient: PublicClient;
+}
+
+async function revokeAttestation(uid: string, clients: RevokeClients): Promise<`0x${string}`> {
+  const { walletClient, publicClient } = clients;
+  
   const hash = await walletClient.writeContract({
     address: EAS_ADDRESS,
     abi: EAS_ABI,
     functionName: 'revoke',
     args: [{
-      schema: IDENTITY_SCHEMA_UID,
+      schema: IDENTITY_SCHEMA_UID as `0x${string}`,
       data: [{ uid: uid as `0x${string}`, value: '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}` }]
-    }]
+    }],
+    chain: baseSepolia,
   });
+
+  // Wait for transaction confirmation
+  const receipt = await publicClient.waitForTransactionReceipt({ hash });
+  if (receipt.status !== 'success') {
+    throw new Error(`Transaction failed: ${hash}`);
+  }
+
   return hash;
 }
 
@@ -167,13 +204,22 @@ async function main() {
     process.exit(1);
   }
 
-  // Set up wallet client
+  // Set up wallet and public clients
   const account = privateKeyToAccount(privateKey as `0x${string}`);
+  const transport = http('https://sepolia.base.org');
+  
   const walletClient = createWalletClient({
     account,
     chain: baseSepolia,
-    transport: http('https://sepolia.base.org')
+    transport
   });
+
+  const publicClient = createPublicClient({
+    chain: baseSepolia,
+    transport
+  });
+
+  const clients: RevokeClients = { walletClient, publicClient };
 
   console.log(`🔑 Using wallet: ${account.address}\n`);
 
@@ -192,10 +238,11 @@ async function main() {
   for (const item of toRevoke) {
     try {
       console.log(`  Revoking ${item.uid.slice(0, 10)}... (${item.username})`);
-      const hash = await revokeAttestation(item.uid, walletClient);
-      console.log(`    ✓ TX: ${hash}`);
-    } catch (err: any) {
-      console.error(`    ✗ Failed: ${err.message}`);
+      const hash = await revokeAttestation(item.uid, clients);
+      console.log(`    ✓ TX confirmed: ${hash}`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error(`    ✗ Failed: ${message}`);
     }
   }
 
