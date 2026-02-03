@@ -1,7 +1,7 @@
 import { createPublicClient, http, type Address, type Hex, parseAbi } from 'viem';
 import { baseSepolia } from 'viem/chains';
 import { getRecentCommits, matchCommitToGitHubUser, listOrgRepos, listUserRepos, type CommitInfo } from './github';
-import { attestCommit } from './attest';
+import { attestCommitWithSession, type SessionConfig } from './attest-with-session';
 
 const RESOLVER_ADDRESS = '0xf20e5d52acf8fc64f5b456580efa3d8e4dcf16c7' as Address;
 const EAS_ADDRESS = '0x4200000000000000000000000000000000000021' as Address;
@@ -36,6 +36,7 @@ export class AttestationService {
   private publicClient;
   private lastCheckTime: Date;
   private attestedCommits: Set<string>;
+  private permissionConfigs: Map<Address, string>; // kernelAddress -> serialized permission
 
   constructor() {
     this.publicClient = createPublicClient({
@@ -44,6 +45,44 @@ export class AttestationService {
     });
     this.lastCheckTime = new Date(Date.now() - 24 * 60 * 60 * 1000); // Start 24h ago
     this.attestedCommits = new Set();
+    this.permissionConfigs = new Map();
+  }
+
+  /**
+   * Load permission accounts from .permissions/ directory or .permission-account.json
+   */
+  async loadPermissionConfigs(): Promise<void> {
+    const fs = await import('fs');
+    const path = await import('path');
+    
+    // Try loading single permission file first (for single-user setup)
+    const singleFile = '.permission-account.json';
+    if (fs.existsSync(singleFile)) {
+      try {
+        const data = JSON.parse(fs.readFileSync(singleFile, 'utf-8'));
+        this.permissionConfigs.set(data.kernelAddress.toLowerCase() as Address, data.serialized);
+        console.log(`[service] Loaded permission for ${data.kernelAddress}`);
+      } catch (e) {
+        console.error(`[service] Failed to load ${singleFile}:`, e);
+      }
+    }
+
+    // Try loading from .permissions/ directory (for multi-user setup)
+    const permDir = '.permissions';
+    if (fs.existsSync(permDir)) {
+      const files = fs.readdirSync(permDir).filter(f => f.endsWith('.json'));
+      for (const file of files) {
+        try {
+          const data = JSON.parse(fs.readFileSync(path.join(permDir, file), 'utf-8'));
+          this.permissionConfigs.set(data.kernelAddress.toLowerCase() as Address, data.serialized);
+          console.log(`[service] Loaded permission for ${data.kernelAddress}`);
+        } catch (e) {
+          console.error(`[service] Failed to load ${file}:`, e);
+        }
+      }
+    }
+
+    console.log(`[service] Loaded ${this.permissionConfigs.size} permission config(s)`);
   }
 
   async getRegisteredUsers(): Promise<RegisteredUser[]> {
@@ -254,16 +293,36 @@ export class AttestationService {
 
         console.log(`[service] Attesting commit ${commit.sha.slice(0, 8)} by ${githubUsername}...`);
 
-        // Attest the commit (verifier pays gas, attests to user's wallet)
-        const result = await attestCommit({
-          userWalletAddress: user.walletAddress,
-          identityAttestationUid: user.identityAttestationUid,
-          commitHash: commit.sha,
-          repoOwner: repo.owner,
-          repoName: repo.name,
-          author: githubUsername, // Use GitHub username for consistency in leaderboards
-          message: commit.message
-        });
+        // Check for session key permission
+        const serializedPermission = this.permissionConfigs.get(user.kernelAddress.toLowerCase() as Address);
+        if (!serializedPermission) {
+          console.log(`[service] ⚠️  No session key for ${user.kernelAddress} - skipping`);
+          continue;
+        }
+
+        const VERIFIER_PRIVKEY = process.env.VERIFIER_PRIVKEY as Hex;
+        const BUNDLER_RPC = process.env.BUNDLER_RPC;
+        if (!VERIFIER_PRIVKEY || !BUNDLER_RPC) {
+          throw new Error('VERIFIER_PRIVKEY and BUNDLER_RPC required for session attestation');
+        }
+
+        // Attest via session key (user's Kernel pays gas)
+        const result = await attestCommitWithSession(
+          {
+            userWalletAddress: user.kernelAddress,
+            identityAttestationUid: user.identityAttestationUid,
+            commitHash: commit.sha,
+            repoOwner: repo.owner,
+            repoName: repo.name,
+            author: githubUsername,
+            message: commit.message
+          },
+          {
+            serializedAccount: serializedPermission,
+            verifierPrivKey: VERIFIER_PRIVKEY,
+            bundlerRpc: BUNDLER_RPC
+          }
+        );
 
         if (result.success) {
           console.log(`[service] ✓ Attested: ${result.attestationUid}`);
@@ -288,6 +347,9 @@ export class AttestationService {
     console.log('[service] Starting attestation run...');
     
     try {
+      // Load session key permissions
+      await this.loadPermissionConfigs();
+
       // Get registered users
       const users = await this.getRegisteredUsers();
       console.log(`[service] Found ${users.length} registered users`);

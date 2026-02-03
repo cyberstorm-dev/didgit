@@ -199,4 +199,7 @@ async function main() {
   console.log('[test] Result:', result);
 }
 
-main().catch(console.error);
+// Only run test when executed directly
+if (process.argv[1]?.includes('attest-with-session')) {
+  main().catch(console.error);
+}
