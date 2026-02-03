@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Box } from '@mui/material';
 import { Navigation, type Page } from './Navigation';
 import { RegisterPage } from './RegisterPage';
+import { AnalyticsPage } from './AnalyticsPage';
 import { SettingsPage } from './SettingsPage';
 
 export const AppMUI: React.FC = () => {
@@ -18,6 +19,7 @@ export const AppMUI: React.FC = () => {
       {/* Page Content */}
       <Box sx={{ flex: 1 }}>
         {currentPage === 'register' && <RegisterPage />}
+        {currentPage === 'stats' && <AnalyticsPage />}
         {currentPage === 'settings' && <SettingsPage />}
       </Box>
     </Box>
