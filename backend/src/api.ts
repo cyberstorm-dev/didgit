@@ -26,6 +26,23 @@ interface RegisteredIdentity {
   identityAttestationUid: Hex;
 }
 
+interface EASAttestation {
+  id: string;
+  recipient: string;
+  decodedDataJson: string;
+}
+
+interface DecodedField {
+  name: string;
+  value: { value: string };
+}
+
+// GitHub username/org name validation: alphanumeric, hyphens, max 39 chars
+const GITHUB_NAME_REGEX = /^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,37}[a-zA-Z0-9])?$/;
+
+// Repository name validation: alphanumeric, hyphens, underscores, dots
+const REPO_NAME_REGEX = /^[a-zA-Z0-9._-]{1,100}$/;
+
 // Look up identity by GitHub username
 async function getIdentityByUsername(username: string): Promise<RegisteredIdentity | null> {
   const query = `
@@ -56,23 +73,26 @@ async function getIdentityByUsername(username: string): Promise<RegisteredIdenti
       })
     });
 
-    const data = await res.json() as { data?: { attestations?: any[] } };
+    const data = await res.json() as { data?: { attestations?: EASAttestation[] } };
     const attestations = data?.data?.attestations ?? [];
 
     for (const att of attestations) {
       try {
-        const decoded = JSON.parse(att.decodedDataJson);
-        const usernameField = decoded.find((d: any) => d.name === 'username');
+        const decoded: DecodedField[] = JSON.parse(att.decodedDataJson);
+        const usernameField = decoded.find((d) => d.name === 'username');
         if (usernameField?.value?.value?.toLowerCase() === username.toLowerCase()) {
           return {
             githubUsername: usernameField.value.value,
             walletAddress: att.recipient as Address,
-            // TODO: Look up Kernel address from registry
+            // NOTE: Using placeholder Kernel address - in production, look up from registry
+            // This allows attestation but may fail if user hasn't deployed a Kernel
             kernelAddress: '0x2Ce0cE887De4D0043324C76472f386dC5d454e96' as Address,
             identityAttestationUid: att.id as Hex
           };
         }
-      } catch {}
+      } catch (parseErr) {
+        console.debug(`[api] Failed to parse attestation ${att.id}:`, parseErr);
+      }
     }
 
     return null;
@@ -103,8 +123,12 @@ function checkRateLimit(identityKey: string): boolean {
 export function createApiServer() {
   const app = express();
 
-  app.use(cors());
-  app.use(express.json());
+  // CORS configuration - restrict in production via CORS_ORIGINS env var
+  const corsOrigins = process.env.CORS_ORIGINS?.split(',').map(o => o.trim()) || [];
+  app.use(cors(corsOrigins.length > 0 ? { origin: corsOrigins } : undefined));
+  
+  // Limit request body size to prevent DoS
+  app.use(express.json({ limit: '10kb' }));
 
   // Health check
   app.get('/health', (req: Request, res: Response) => {
@@ -127,6 +151,20 @@ export function createApiServer() {
       return res.status(400).json({
         success: false,
         error: 'Invalid commit hash format (expected 40 hex characters)'
+      });
+    }
+
+    if (!GITHUB_NAME_REGEX.test(repoOwner)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid repoOwner format (must be valid GitHub username/org)'
+      });
+    }
+
+    if (!REPO_NAME_REGEX.test(repoName)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid repoName format (alphanumeric, hyphens, underscores, dots only)'
       });
     }
 
