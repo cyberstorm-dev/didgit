@@ -16,9 +16,11 @@ type State = {
   connecting: boolean;
   customHost: string | null;
   domain: string;
+  error: string | null;
   connect: (customHost?: string) => Promise<void>;
   disconnect: () => void;
   setCustomHost: (host: string | null) => void;
+  clearError: () => void;
 };
 
 const Ctx = createContext<State | undefined>(undefined);
@@ -36,6 +38,7 @@ export const CodebergAuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
     // Initialize from sessionStorage
     return sessionStorage.getItem(STORAGE_KEY_HOST);
   });
+  const [error, setError] = useState<string | null>(null);
 
   // Compute domain from customHost
   const domain = useMemo(() => getGiteaDomain(customHost || undefined), [customHost]);
@@ -82,6 +85,7 @@ export const CodebergAuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
           setCbUser(u);
         } catch (e) {
           console.error('[codeberg] OAuth callback error:', e);
+          setError(e instanceof Error ? e.message : 'OAuth callback failed');
         } finally {
           sessionStorage.removeItem(STORAGE_KEY_STATE);
           sessionStorage.removeItem(STORAGE_KEY_VERIFIER);
@@ -128,6 +132,7 @@ export const CodebergAuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
           setCbUser(u);
         } catch (e) {
           console.error('[codeberg] OAuth error:', e);
+          setError(e instanceof Error ? e.message : 'OAuth authentication failed');
         } finally {
           // Cleanup URL
           url.searchParams.delete('code');
@@ -188,6 +193,11 @@ export const CodebergAuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const disconnect = useCallback(() => {
     setCbUser(null);
     setToken(null);
+    setError(null);
+  }, []);
+
+  const clearError = useCallback(() => {
+    setError(null);
   }, []);
 
   const value = useMemo<State>(() => ({
@@ -196,10 +206,12 @@ export const CodebergAuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
     connecting,
     customHost,
     domain,
+    error,
     connect,
     disconnect,
     setCustomHost,
-  }), [token, cbUser, connecting, customHost, domain, connect, disconnect, setCustomHost]);
+    clearError,
+  }), [token, cbUser, connecting, customHost, domain, error, connect, disconnect, setCustomHost, clearError]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 };

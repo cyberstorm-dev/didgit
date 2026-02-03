@@ -136,7 +136,9 @@ export class AttestationService {
             const globs = globsField.value.value.split(',').map((g: string) => g.trim());
             globsByIdentity.set(att.refUID.toLowerCase(), globs);
           }
-        } catch {}
+        } catch (e) {
+          console.debug('[service] Failed to parse repo globs attestation:', e);
+        }
       }
 
       // Build registered users
@@ -177,7 +179,9 @@ export class AttestationService {
           });
 
           console.log(`[service] Found user: ${domain}:${username} with globs: ${repoGlobs.join(', ')}`);
-        } catch {}
+        } catch (e) {
+          console.debug('[service] Failed to parse identity attestation:', e);
+        }
       }
 
       return users;

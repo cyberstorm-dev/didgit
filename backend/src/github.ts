@@ -1,21 +1,9 @@
 import { Octokit } from '@octokit/rest';
+import { CommitInfo } from './types';
+
+export { CommitInfo };
 
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
-
-export interface CommitInfo {
-  sha: string;
-  author: {
-    email: string;
-    name: string;
-    username?: string;
-  };
-  message: string;
-  timestamp: string;
-  repo: {
-    owner: string;
-    name: string;
-  };
-}
 
 export async function getRecentCommits(
   owner: string,

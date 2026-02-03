@@ -5,22 +5,30 @@
  * Default host is codeberg.org when no custom host is specified.
  */
 
+import { CommitInfo } from './types';
+
+export { CommitInfo };
+
 const GITEA_TOKEN = process.env.GITEA_TOKEN;
 const DEFAULT_HOST = 'codeberg.org';
 
-export interface CommitInfo {
+/**
+ * Gitea API commit response
+ */
+interface GiteaCommit {
   sha: string;
-  author: {
-    email: string;
-    name: string;
-    username?: string;
+  commit?: {
+    author?: {
+      email?: string;
+      name?: string;
+      date?: string;
+    };
+    message?: string;
   };
-  message: string;
-  timestamp: string;
-  repo: {
-    owner: string;
-    name: string;
+  author?: {
+    login?: string;
   };
+  created?: string;
 }
 
 export interface GiteaRepo {
@@ -107,7 +115,7 @@ export async function getRecentCommits(
       return [];
     }
     
-    const commits = await resp.json() as any[];
+    const commits = await resp.json() as GiteaCommit[];
     
     return commits
       .filter(commit => {
