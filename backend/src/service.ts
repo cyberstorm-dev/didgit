@@ -80,14 +80,16 @@ export class AttestationService {
         // Schema: address userKernel, address verifier, address target, bytes4 selector, bytes serializedPermission
         const userKernel = data[0]?.value?.value?.toLowerCase() as Address;
         const verifier = data[1]?.value?.value?.toLowerCase();
-        const serialized = data[4]?.value?.value;
+        const serializedHex = data[4]?.value?.value as string; // hex-encoded UTF-8
         
-        if (userKernel && serialized) {
+        if (userKernel && serializedHex) {
           // Only load permissions for our verifier
           const { privateKeyToAccount } = await import('viem/accounts');
           const ourVerifier = privateKeyToAccount(process.env.VERIFIER_PRIVKEY as `0x${string}`).address.toLowerCase();
           
           if (verifier === ourVerifier) {
+            // Decode hex to UTF-8 string (the original serialized permission)
+            const serialized = Buffer.from(serializedHex.slice(2), 'hex').toString('utf-8');
             this.permissionConfigs.set(userKernel, serialized);
             console.log(`[service] Loaded permission for ${userKernel} (from EAS)`);
           }
