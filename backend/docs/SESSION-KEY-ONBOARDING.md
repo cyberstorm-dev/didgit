@@ -95,14 +95,17 @@ You should see:
 
 ### 4. Fund your Kernel
 
-Your Kernel pays gas for attestations. Send Base Sepolia ETH to your Kernel address.
+Your Kernel pays gas for attestations. Send Base Sepolia ETH to your Kernel address (shown during setup).
 
-```bash
-# Kernel address shown during setup, or derive:
-# It's a ZeroDev Kernel at a deterministic address from your EOA
-```
+**That's it. You're done.**
+
+The verifier handles everything from here. Your commits get attested automatically. You just need to:
+- Keep gas in your Kernel
+- Update repo globs if you want to track different repos
 
 ## How Attestations Work After Setup
+
+**You do nothing. Verifier handles it all.**
 
 ```
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
@@ -113,15 +116,16 @@ Your Kernel pays gas for attestations. Send Base Sepolia ETH to your Kernel addr
                            ▼
                     ┌─────────────┐
                     │ Your Kernel │
-                    │ (UserOp)    │
+                    │ (pays gas)  │
                     └─────────────┘
 ```
 
 1. Verifier detects your commit on GitHub
 2. Verifier creates a UserOp calling EAS.attest()
-3. UserOp is signed using your stored permission
-4. Kernel validates permission, executes attest()
-5. Attestation created **from your Kernel address**
+3. Verifier signs using your permission (stored on-chain in EAS)
+4. Your Kernel validates permission, executes attest()
+5. Attestation created from your Kernel address
+6. Your Kernel pays gas
 
 ## Revocation
 
