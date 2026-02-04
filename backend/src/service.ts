@@ -8,6 +8,7 @@ const EAS_ADDRESS = '0x4200000000000000000000000000000000000021' as Address;
 const IDENTITY_SCHEMA_UID = '0x6ba0509abc1a1ed41df2cce6cbc7350ea21922dae7fcbc408b54150a40be66af' as Hex;
 const CONTRIBUTION_SCHEMA_UID = '0x7425c71616d2959f30296d8e013a8fd23320145b1dfda0718ab0a692087f8782' as Hex;
 const REPO_GLOBS_SCHEMA_UID = '0x79cb78c31678d34847273f605290b2ab56db29a057fdad8facdcc492b9cf2e74' as Hex;
+const PERMISSION_SCHEMA_UID = '0x6ab56e335e99f78585c89e5535b47c3c90c94c056775dbd28a57490b07e2e9b6' as Hex;
 const EAS_GRAPHQL = 'https://base-sepolia.easscan.org/graphql';
 
 const resolverAbi = parseAbi([
@@ -49,40 +50,54 @@ export class AttestationService {
   }
 
   /**
-   * Load permission accounts from .permissions/ directory or .permission-account.json
+   * Load permission accounts from EAS attestations (on-chain storage)
    */
   async loadPermissionConfigs(): Promise<void> {
-    const fs = await import('fs');
-    const path = await import('path');
+    console.log('[service] Fetching session key permissions from EAS...');
     
-    // Try loading single permission file first (for single-user setup)
-    const singleFile = '.permission-account.json';
-    if (fs.existsSync(singleFile)) {
-      try {
-        const data = JSON.parse(fs.readFileSync(singleFile, 'utf-8'));
-        this.permissionConfigs.set(data.kernelAddress.toLowerCase() as Address, data.serialized);
-        console.log(`[service] Loaded permission for ${data.kernelAddress}`);
-      } catch (e) {
-        console.error(`[service] Failed to load ${singleFile}:`, e);
-      }
-    }
-
-    // Try loading from .permissions/ directory (for multi-user setup)
-    const permDir = '.permissions';
-    if (fs.existsSync(permDir)) {
-      const files = fs.readdirSync(permDir).filter(f => f.endsWith('.json'));
-      for (const file of files) {
-        try {
-          const data = JSON.parse(fs.readFileSync(path.join(permDir, file), 'utf-8'));
-          this.permissionConfigs.set(data.kernelAddress.toLowerCase() as Address, data.serialized);
-          console.log(`[service] Loaded permission for ${data.kernelAddress}`);
-        } catch (e) {
-          console.error(`[service] Failed to load ${file}:`, e);
+    const query = `
+      query {
+        attestations(where: { schemaId: { equals: "${PERMISSION_SCHEMA_UID}" }, revoked: { equals: false } }) {
+          id
+          recipient
+          decodedDataJson
         }
       }
+    `;
+
+    const response = await fetch(EAS_GRAPHQL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query })
+    });
+
+    const result = await response.json() as any;
+    const attestations = result.data?.attestations || [];
+
+    for (const att of attestations) {
+      try {
+        const data = JSON.parse(att.decodedDataJson);
+        // Schema: address userKernel, address verifier, address target, bytes4 selector, bytes serializedPermission
+        const userKernel = data[0]?.value?.value?.toLowerCase() as Address;
+        const verifier = data[1]?.value?.value?.toLowerCase();
+        const serialized = data[4]?.value?.value;
+        
+        if (userKernel && serialized) {
+          // Only load permissions for our verifier
+          const { privateKeyToAccount } = await import('viem/accounts');
+          const ourVerifier = privateKeyToAccount(process.env.VERIFIER_PRIVKEY as `0x${string}`).address.toLowerCase();
+          
+          if (verifier === ourVerifier) {
+            this.permissionConfigs.set(userKernel, serialized);
+            console.log(`[service] Loaded permission for ${userKernel} (from EAS)`);
+          }
+        }
+      } catch (e) {
+        console.error('[service] Failed to parse permission attestation:', e);
+      }
     }
 
-    console.log(`[service] Loaded ${this.permissionConfigs.size} permission config(s)`);
+    console.log(`[service] Loaded ${this.permissionConfigs.size} permission config(s) from EAS`);
   }
 
   async getRegisteredUsers(): Promise<RegisteredUser[]> {
