@@ -163,3 +163,105 @@ export async function listUserRepos(username: string): Promise<{ owner: string; 
     throw e;
   }
 }
+
+/**
+ * Issue information
+ */
+export interface IssueInfo {
+  number: number;
+  title: string;
+  author: string;
+  state: 'open' | 'closed';
+  labels: string[];
+  createdAt: string;
+  closedAt: string | null;
+  repo: {
+    owner: string;
+    name: string;
+  };
+}
+
+/**
+ * Get issues from a repository
+ */
+export async function getRepoIssues(
+  owner: string,
+  repo: string,
+  since?: Date,
+  state: 'open' | 'closed' | 'all' = 'all'
+): Promise<IssueInfo[]> {
+  const octokit = new Octokit({ auth: GITHUB_TOKEN });
+
+  try {
+    const { data: issues } = await octokit.issues.listForRepo({
+      owner,
+      repo,
+      state,
+      since: since?.toISOString(),
+      per_page: 100
+    });
+
+    // Filter out pull requests (GitHub API returns PRs in issues endpoint)
+    return issues
+      .filter(issue => !issue.pull_request)
+      .map(issue => ({
+        number: issue.number,
+        title: issue.title,
+        author: issue.user?.login || '',
+        state: issue.state as 'open' | 'closed',
+        labels: issue.labels.map(l => typeof l === 'string' ? l : l.name || '').filter(Boolean),
+        createdAt: issue.created_at,
+        closedAt: issue.closed_at,
+        repo: { owner, name: repo }
+      }));
+  } catch (e: any) {
+    if (e.status === 404) {
+      console.log(`[github] Repo ${owner}/${repo} not found`);
+      return [];
+    }
+    throw e;
+  }
+}
+
+/**
+ * Get a specific issue
+ */
+export async function getIssue(
+  owner: string,
+  repo: string,
+  number: number
+): Promise<IssueInfo | null> {
+  try {
+    const octokit = new Octokit({ auth: GITHUB_TOKEN });
+
+    const { data: issue } = await octokit.issues.get({
+      owner,
+      repo,
+      issue_number: number
+    });
+
+    // Check if it's a pull request
+    if (issue.pull_request) {
+      console.log(`[github] #${number} is a pull request, not an issue`);
+      return null;
+    }
+
+    return {
+      number: issue.number,
+      title: issue.title,
+      author: issue.user?.login || '',
+      state: issue.state as 'open' | 'closed',
+      labels: issue.labels.map(l => typeof l === 'string' ? l : l.name || '').filter(Boolean),
+      createdAt: issue.created_at,
+      closedAt: issue.closed_at,
+      repo: { owner, name: repo }
+    };
+  } catch (e: any) {
+    if (e.status === 404) {
+      console.log(`[github] Issue #${number} not found in ${owner}/${repo}`);
+      return null;
+    }
+    console.error(`[github] Failed to fetch issue #${number}:`, e);
+    return null;
+  }
+}
