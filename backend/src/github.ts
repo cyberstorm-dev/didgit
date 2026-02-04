@@ -77,7 +77,7 @@ export async function getCommit(
     };
   } catch (e) {
     console.error(`[github] Failed to fetch commit ${sha}:`, e);
-    return null;
+    throw e;
   }
 }
 
@@ -141,7 +141,7 @@ export async function listUserRepos(username: string): Promise<{ owner: string; 
     while (true) {
       const { data } = await octokit.repos.listForUser({
         username,
-        type: 'public',
+        type: 'owner',
         per_page: 100,
         page
       });

@@ -135,10 +135,14 @@ export async function submitUserOp(
     })
   });
 
-  const result = await response.json();
+  const result = await response.json() as { error?: { message: string }; result?: string };
   
   if (result.error) {
     throw new Error(`Bundler error: ${result.error.message}`);
+  }
+
+  if (!result.result) {
+    throw new Error('Bundler returned no result');
   }
 
   return result.result; // UserOp hash

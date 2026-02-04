@@ -1,20 +1,18 @@
 import dotenv from 'dotenv';
 import { AttestationService } from './service';
+import { startApiServer } from './api';
 
 // Load environment variables
 dotenv.config();
 
 // Validate required env vars
-const required = ['VERIFIER_PRIVKEY', 'GITHUB_TOKEN'];
+const required = ['VERIFIER_PRIVKEY', 'GITHUB_TOKEN', 'USER_PRIVKEY'];
 const missing = required.filter(key => !process.env[key]);
 
 if (missing.length > 0) {
   console.error('Missing required environment variables:', missing.join(', '));
   process.exit(1);
 }
-
-// Start the service
-const service = new AttestationService();
 
 // Handle graceful shutdown
 process.on('SIGINT', () => {
@@ -30,7 +28,21 @@ process.on('SIGTERM', () => {
 // Start
 console.log('[main] didgit attestation service starting...');
 
-service.start(30).catch(err => {
+async function main() {
+  // Start HTTP API server
+  await startApiServer();
+  
+  // Start polling service (optional, can be disabled via env)
+  if (process.env.ENABLE_POLLING !== 'false') {
+    const service = new AttestationService();
+    const intervalMinutes = parseInt(process.env.POLL_INTERVAL_MINUTES || '30', 10);
+    await service.start(intervalMinutes);
+  } else {
+    console.log('[main] Polling service disabled (ENABLE_POLLING=false)');
+  }
+}
+
+main().catch(err => {
   console.error('[main] Fatal error:', err);
   process.exit(1);
 });

@@ -86,8 +86,8 @@ export class AttestationService {
         })
       ]);
 
-      const identityData = await identityRes.json();
-      const repoGlobsData = await repoGlobsRes.json();
+      const identityData = await identityRes.json() as { data?: { attestations?: any[] } };
+      const repoGlobsData = await repoGlobsRes.json() as { data?: { attestations?: any[] } };
 
       const identities = identityData?.data?.attestations ?? [];
       const repoGlobsAtts = repoGlobsData?.data?.attestations ?? [];
@@ -129,7 +129,9 @@ export class AttestationService {
           users.push({
             githubUsername: username,
             walletAddress: att.recipient as Address,
-            kernelAddress: '0x2Ce0cE887De4D0043324C76472f386dC5d454e96' as Address, // TODO: lookup from registry
+            // LIMITATION: Hardcoded kernel address - all users share the same kernel account.
+            // This should be replaced with a registry lookup to get each user's actual kernel address.
+            kernelAddress: '0x2Ce0cE887De4D0043324C76472f386dC5d454e96' as Address,
             identityAttestationUid: att.id as Hex,
             repoGlobs
           });
