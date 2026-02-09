@@ -122,41 +122,6 @@ Check on EAS explorer:
 
 ---
 
-## Troubleshooting
-
-### "Username already registered"
-The resolver enforces one-to-one mapping. If the username is taken:
-- Check if they already registered with a different wallet
-- Old attestations can be revoked, then re-register
-
-### "Insufficient funds"
-They need Base Sepolia ETH. Use the faucet:
-https://www.coinbase.com/faucets/base-sepolia-faucet
-
-### "Invalid signature"
-- Message must be exactly `github.com:username` (lowercase username)
-- They must sign with the wallet they're linking
-- Use `personal_sign`, not `eth_sign`
-
-### "Resolver rejected"
-The UsernameUniqueResolver checks:
-- Username not already taken
-- Wallet not already linked to another username
-- Attester == recipient (self-attestation only)
-
----
-
-## Contract Addresses (Base Sepolia)
-
-| Contract | Address |
-|----------|---------|
-| EAS | `0x4200000000000000000000000000000000000021` |
-| Schema Registry | `0x4200000000000000000000000000000000000020` |
-| UsernameUniqueResolver | `0xf20e5d52acf8fc64f5b456580efa3d8e4dcf16c7` |
-| Identity Schema | `0x6ba0509abc1a1ed41df2cce6cbc7350ea21922dae7fcbc408b54150a40be66af` |
-
----
-
 ## Enabling Automatic Commit Attestations
 
 After identity registration, set up a **session key** so your commits are attested automatically.
@@ -197,6 +162,56 @@ pnpm run permission:attest -- \
 9) Register your repos (Repo Globs attestation, e.g., `yourorg/*`). The verifier will only attest commits matching your globs.
 
 After setup: your EOA key is no longer needed for attestations; the on-chain permission governs use. Revoke via EAS anytime. Gas is paid from your Kernel balance.
+
+---
+
+## Troubleshooting
+
+### "Username already registered"
+The resolver enforces one-to-one mapping. If the username is taken:
+- Check if they already registered with a different wallet
+- Old attestations can be revoked, then re-register
+
+### "Insufficient funds"
+They need Base Sepolia ETH. Use the faucet:
+https://www.coinbase.com/faucets/base-sepolia-faucet
+
+### "Invalid signature"
+- Message must be exactly `github.com:username` (lowercase username)
+- They must sign with the wallet they're linking
+- Use `personal_sign`, not `eth_sign`
+
+### "Resolver rejected"
+The UsernameUniqueResolver checks:
+- Username not already taken
+- Wallet not already linked to another username
+- Attester == recipient (self-attestation only)
+
+---
+
+## Contract Addresses (Base Sepolia)
+
+| Contract | Address |
+|----------|---------|
+| EAS | `0x4200000000000000000000000000000000000021` |
+| Schema Registry | `0x4200000000000000000000000000000000000020` |
+| UsernameUniqueResolver | `0xf20e5d52acf8fc64f5b456580efa3d8e4dcf16c7` |
+| Identity Schema | `0x6ba0509abc1a1ed41df2cce6cbc7350ea21922dae7fcbc408b54150a40be66af` |
+
+---
+
+## Why This Matters
+
+Identity is the primitive. Without verified identity:
+- Agents can't build reputation
+- Contributions can't be attributed
+- Bounties can't be paid to the right wallet
+
+didgit.dev solves this with on-chain attestations that anyone can verify.
+
+---
+
+*This skill is part of [cyberstorm.dev](https://cyberstorm.dev) — coordination infrastructure for human-AI symbiosis.*
 
 ### Planned improvement
 A verifier-side self-serve flow: user provides Kernel address → service signs the permission blob → user attests it with their EOA. No human-in-the-loop, no verifier key exposure.
