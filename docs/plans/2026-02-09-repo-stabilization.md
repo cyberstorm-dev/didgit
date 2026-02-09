@@ -4,7 +4,7 @@
 
 **Goal:** Make the repo predictable to work in (DX first), then tighten release hygiene, then ensure builds/tests are green, while preserving the requirement that web builds emit into `public/`.
 
-**Architecture:** Add top-level DX entrypoints that orchestrate subproject commands, document environment contracts, and add build hygiene guardrails. Use TDD for any behavior changes and keep builds deterministic with `public/` as the web artifact location.
+**Architecture:** Add top-level DX entrypoints that orchestrate subproject commands, document environment contracts, add build hygiene guardrails, and parameterize chain config for Base + Arbitrum (Base default).
 
 **Tech Stack:** Node/pnpm, Vite, TypeScript, Vitest, shell scripts.
 
@@ -160,11 +160,13 @@ git add src/main/typescript/apps/web/package.json src/main/typescript/apps/web/v
 
 ---
 
-### Task 4: Document environment contract
+### Task 4: Document environment + chain contract
 
 **Files:**
 - Modify: `docs/GETTING_STARTED.md`
 - Create: `docs/ENV.md`
+- Create: `docs/CHAINS.md`
+- Test: `scripts/tests/test_env_docs.ts`
 
 **Step 1: Write the failing test**
 
@@ -177,17 +179,24 @@ describe('env docs', () => {
     const envDoc = fs.readFileSync('docs/ENV.md', 'utf8');
     expect(envDoc).toContain('GITHUB_TOKEN');
   });
+
+  it('documents chain config', () => {
+    const chainsDoc = fs.readFileSync('docs/CHAINS.md', 'utf8');
+    expect(chainsDoc).toContain('Base');
+    expect(chainsDoc).toContain('Arbitrum');
+  });
 });
 ```
 
 **Step 2: Run test to verify it fails**
 
 Run: `pnpm test scripts/tests/test_env_docs.ts`
-Expected: FAIL because file not found.
+Expected: FAIL because files not found.
 
 **Step 3: Write minimal implementation**
 
 Create `docs/ENV.md` with a small table of variables and references.
+Create `docs/CHAINS.md` with per-chain addresses and schema UIDs.
 
 **Step 4: Run test to verify it passes**
 
@@ -197,8 +206,8 @@ Expected: PASS.
 **Step 5: Commit**
 
 ```bash
-git add docs/ENV.md docs/GETTING_STARTED.md scripts/tests/test_env_docs.ts
- git commit -m "Document env contract"
+git add docs/ENV.md docs/CHAINS.md docs/GETTING_STARTED.md scripts/tests/test_env_docs.ts
+ git commit -m "Document env and chain config"
 ```
 
 ---
@@ -246,7 +255,60 @@ git add scripts/dx.ts scripts/tests/test_verify.ts
 
 ---
 
-### Task 6: Fix build blockers in web TypeScript
+### Task 6: Add chain parameterization (Base default, Arbitrum selectable)
+
+**Files:**
+- Create: `src/main/typescript/apps/web/utils/chain-config.ts`
+- Modify: `backend/src/config.ts`
+- Modify: `workers/permission-blob/src/index.ts`
+- Test: `backend/tests/config.test.ts`
+
+**Step 1: Write the failing test**
+
+```ts
+import { describe, it, expect } from 'vitest';
+import { getChainConfig } from '../src/config';
+
+describe('chain config', () => {
+  it('defaults to base', () => {
+    const cfg = getChainConfig();
+    expect(cfg.name).toBe('base');
+  });
+
+  it('allows arbitrum via CHAIN env', () => {
+    process.env.CHAIN = 'arbitrum';
+    const cfg = getChainConfig();
+    expect(cfg.name).toBe('arbitrum');
+  });
+});
+```
+
+**Step 2: Run test to verify it fails**
+
+Run: `cd backend && pnpm test`
+Expected: FAIL with missing config.
+
+**Step 3: Write minimal implementation**
+
+- Add `getChainConfig()` in backend config.
+- Mirror config in web/worker.
+- Include per-chain schema UID catalog (no parity assumption).
+
+**Step 4: Run test to verify it passes**
+
+Run: `cd backend && pnpm test`
+Expected: PASS.
+
+**Step 5: Commit**
+
+```bash
+git add backend/src/config.ts backend/tests/config.test.ts src/main/typescript/apps/web/utils/chain-config.ts workers/permission-blob/src/index.ts
+ git commit -m "Add chain parameterization for base + arbitrum"
+```
+
+---
+
+### Task 7: Fix build blockers in web TypeScript
 
 **Files:**
 - Modify: `src/main/typescript/apps/web/utils/config.ts`
@@ -277,7 +339,7 @@ git add src/main/typescript/apps/web/utils/config.ts src/main/typescript/apps/we
 
 ---
 
-### Task 7: Run full verify and build:web
+### Task 8: Run full verify and build:web
 
 **Files:**
 - None
@@ -301,7 +363,7 @@ git add public/
 
 ---
 
-### Task 8: Push branch and open review
+### Task 9: Push branch and open review
 
 **Files:**
 - None
@@ -313,3 +375,10 @@ Run: `git push -u origin repo-stabilization`
 **Step 2: Review**
 
 Summarize changes and any remaining known issues.
+
+---
+
+## Backlog (Not in scope for this plan)
+
+- Paid registration flow.
+- Provision production verifier, attestor, owner, treasurer addresses (per chain) and custody/rotation docs.
