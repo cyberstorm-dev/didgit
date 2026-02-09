@@ -221,37 +221,38 @@ A scoped permission that lets the didgit verifier create attestations on your be
 - **You revoke** anytime (remove the permission)
 - **Verifier can only** call EAS.attest() — nothing else
 
-### Setup (One-Time, current flow)
+### Setup (Session Key) — current flow
 
-> Current helper still uses the verifier signing key to serialize the permission. Remove it after use. A verifierless flow is planned.
+We’re moving to verifierless UX. For now, you do NOT need the verifier key. You’ll get a permission blob from the verifier and only need to attest it.
 
-1) Get your Kernel address (no verifier key):
+5) Get your Kernel address (no verifier key):
 ```bash
 cd didgit/backend
 PRIVATE_KEY=0x<YOUR_EOA_PRIVKEY> pnpm run kernel:address
-# also accepts USER_PRIVKEY for backward compatibility
-# outputs: EOA + Kernel
+# prints EOA + Kernel
 ```
 
-2) (Current limitation) If you accept the temporary verifier-key step, create `.env` and run setup:
+6) Fund your Kernel (Base Sepolia):
 ```bash
-cat > .env <<'EOF'
-VERIFIER_PRIVKEY=0xfcb525413bd7c69608771c60e923c7dcb283caa07559f5bbfcffb86ed2bbd637
-GITHUB_TOKEN=<your_github_token>
-BUNDLER_RPC=https://rpc.zerodev.app/api/v3/aa40f236-4eff-41e1-8737-ab95ab7e1850/chain/84532
-USER_PRIVKEY=0x<YOUR_EOA_PRIVKEY>
-EOF
-
-npx tsx src/setup-permission.ts
+cast send 0x<YOUR_KERNEL> --value 0.01ether --rpc-url https://sepolia.base.org
 ```
 
-What it does:
-1) Derives your Kernel from your EOA
-2) Builds a permission scoped to `EAS.attest()` and signs it with the verifier key
-3) Attests the permission to EAS **as you** (attester = your EOA)
-4) Prints your Kernel address and permission attestation UID
+7) Attest the permission blob (provided by verifier) — no verifier key locally:
+```bash
+cd didgit/backend
+PRIVATE_KEY=0x<YOUR_EOA_PRIVKEY> \
+USER_KERNEL=0x<YOUR_KERNEL> \
+PERMISSION_DATA=0x<PERMISSION_BLOB_FROM_VERIFIER> \
+pnpm run permission:attest
 
-After you run it: remove `VERIFIER_PRIVKEY` from `.env` if desired.
+# Or with flags:
+pnpm run permission:attest -- \
+  --private-key 0x<YOUR_EOA_PRIVKEY> \
+  --kernel 0x<YOUR_KERNEL> \
+  --permission 0x<PERMISSION_BLOB_FROM_VERIFIER>
+```
+
+After this, commits will be attested from your Kernel; you can revoke via EAS anytime.
 
 ### Fund Your Kernel
 
