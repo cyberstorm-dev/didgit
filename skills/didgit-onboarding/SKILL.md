@@ -87,85 +87,33 @@ echo "$GIST_URL"
 
 Save and export `GIST_URL` from the response.
 
-### Step 4: Submit Attestation (no npm install, uses repo deps)
+### Step 4: Submit Attestation (script in repo)
 
-Run from `didgit/backend` (uses existing `tsx` + `viem` already in the repo):
+From `didgit/backend` (deps already installed), set envs or pass flags:
 
 ```bash
 cd didgit/backend
-cat > /tmp/attest-identity.ts <<'TS'
-import { createWalletClient, createPublicClient, http, encodeAbiParameters, parseAbiParameters } from 'viem';
-import { privateKeyToAccount } from 'viem/accounts';
-import { baseSepolia } from 'viem/chains';
 
-const EAS = '0x4200000000000000000000000000000000000021';
-const SCHEMA = '0x6ba0509abc1a1ed41df2cce6cbc7350ea21922dae7fcbc408b54150a40be66af';
-
-const { PRIVATE_KEY, GITHUB_USERNAME, WALLET_ADDRESS, SIGNATURE, GIST_URL } = process.env;
-if (!PRIVATE_KEY?.startsWith('0x')) throw new Error('PRIVATE_KEY required (0x-prefixed)');
-if (!GITHUB_USERNAME || !WALLET_ADDRESS || !SIGNATURE || !GIST_URL) throw new Error('Missing envs');
-
-const account = privateKeyToAccount(PRIVATE_KEY as `0x${string}`);
-const publicClient = createPublicClient({ chain: baseSepolia, transport: http('https://sepolia.base.org') });
-const walletClient = createWalletClient({ account, chain: baseSepolia, transport: http('https://sepolia.base.org') });
-
-const data = encodeAbiParameters(
-  parseAbiParameters('string domain,string username,address wallet,string message,bytes signature,string proof_url'),
-  [
-    'github.com',
-    GITHUB_USERNAME,
-    WALLET_ADDRESS as `0x${string}`,
-    `github.com:${GITHUB_USERNAME}`,
-    SIGNATURE as `0x${string}`,
-    GIST_URL
-  ]
-);
-
-const easAbi = [{
-  name: 'attest',
-  type: 'function',
-  inputs: [{ name: 'request', type: 'tuple', components: [
-    { name: 'schema', type: 'bytes32' },
-    { name: 'data', type: 'tuple', components: [
-      { name: 'recipient', type: 'address' },
-      { name: 'expirationTime', type: 'uint64' },
-      { name: 'revocable', type: 'bool' },
-      { name: 'refUID', type: 'bytes32' },
-      { name: 'data', type: 'bytes' },
-      { name: 'value', type: 'uint256' }
-    ]}
-  ]}],
-  outputs: [{ name: '', type: 'bytes32' }]
-}];
-
-const req = {
-  schema: SCHEMA,
-  data: {
-    recipient: WALLET_ADDRESS as `0x${string}`,
-    expirationTime: 0n,
-    revocable: true,
-    refUID: '0x0000000000000000000000000000000000000000000000000000000000000000',
-    data,
-    value: 0n
-  }
-};
-
-const tx = await walletClient.writeContract({ address: EAS, abi: easAbi, functionName: 'attest', args: [req] });
-console.log('TX:', tx);
-const receipt = await publicClient.waitForTransactionReceipt({ hash: tx });
-const log = receipt.logs.find(l => l.topics?.length > 1);
-console.log('UID:', log?.topics[1]);
-TS
-
+# Env form (0x-prefixed keys)
 PRIVATE_KEY=0x<YOUR_WALLET_KEY> \
 GITHUB_USERNAME=$GITHUB_USERNAME \
 WALLET_ADDRESS=$WALLET_ADDRESS \
 SIGNATURE=$SIGNATURE \
 GIST_URL=$GIST_URL \
-npx tsx /tmp/attest-identity.ts
+pnpm run attest:identity
+
+# Or flags override envs
+pnpm run attest:identity -- \
+  --private-key 0x<YOUR_WALLET_KEY> \
+  --username $GITHUB_USERNAME \
+  --wallet $WALLET_ADDRESS \
+  --signature $SIGNATURE \
+  --proof-url $GIST_URL
 ```
 
-Fields (schema order): domain, username, wallet, message, signature, proof_url. After run, capture `UID` from output.
+Script location: `backend/src/attest-identity.ts`
+Fields (schema order): domain, username, wallet, message, signature, proof_url.
+After run, capture `UID` from output.
 
 ### Step 5: Verify
 
