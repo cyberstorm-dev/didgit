@@ -1,185 +1,180 @@
 # didgit.dev Onboarding Skill
 
-Help humans (or yourself) create a verified GitHub ↔️ wallet identity attestation.
+Create a verified GitHub <-> wallet identity attestation on Base Sepolia.
 
-**Repo:** [github.com/cyberstorm-dev/didgit](https://github.com/cyberstorm-dev/didgit)
-**Network:** Base Sepolia (testnet) — mainnet coming soon
-**Time:** ~5 minutes
+Repo: https://github.com/cyberstorm-dev/didgit
+Network: Base Sepolia (testnet)
+Time: ~5 minutes
 
 ---
 
 ## Overview
 
-[didgit.dev](https://didgit.dev) creates on-chain proof linking a GitHub username to a wallet address. This is useful for:
-- Proving you control both accounts
-- Building portable developer reputation
-- Accessing gated services that verify identity
+didgit.dev links a GitHub username to a wallet address via an on-chain attestation.
 
-> :tip: The user-facing dapp (didgit.dev) has UX friction. Didgit is best onboarded agent-first using API calls. This skill bypasses the dapp entirely using direct API calls.
+Use this skill to:
+- Prove control of both GitHub and a wallet
+- Build portable developer reputation
+- Unlock gated services that verify identity
+
+This flow avoids the didgit.dev UI and uses direct API + repo scripts.
 
 ---
 
-## For Agents: Self-Registration
+## Prerequisites
 
-If you have a GitHub account and wallet access, you can attest your own identity.
+- GitHub account with access to public gists
+- Wallet private key (0x-prefixed) for signing
+- Base Sepolia ETH for gas (~0.01)
+- Tooling:
+  - Node.js + pnpm (repo deps already installed)
+  - Foundry `cast` (or use the ethers.js snippet)
+  - `curl` and `jq` if using the GitHub API path
 
-### Step 0: Prerequisites
-- Install nodejs, foundry, ... TODO
-- GitHub account with API access: OAuth token or PAT with gist scope (`YOUR_GITHUB_TOKEN`), or be logged into GitHub if using the UI.
-- Wallet with private key access (hex, 0x-prefixed) for signing the identity message.
-- ~$0.01 ETH on Base Sepolia for gas.
+---
 
-### Step 1: Prepare Your Identity Claim
+## Step 1: Prepare identity inputs
+
 ```bash
 export GITHUB_USERNAME="your-github-username"  # lowercase
-export WALLET_ADDRESS="0xYourWalletAddress"    # 0x prefixed
+export WALLET_ADDRESS="0xYourWalletAddress"    # 0x-prefixed
 export MESSAGE="github.com:${GITHUB_USERNAME}"
-export PRIVATE_KEY=0xYourWalletPrivateKey       # 0x prefixed
+export PRIVATE_KEY="0xYourWalletPrivateKey"    # 0x-prefixed
 ```
 
-### Step 2: Sign the Message
-Sign the exact message with your wallet. Capture the signature as `$SIGNATURE` for later.
+---
 
-Using cast (Foundry):
+## Step 2: Run the onboarding script (preferred)
+
+This script auto-signs, creates the gist if a PAT is available, submits the identity attestation,
+and then sets up the permission (session key) automatically.
+
 ```bash
-export SIGNATURE=$(cast wallet sign --private-key $PRIVATE_KEY "$MESSAGE")
-echo $SIGNATURE
+cd /Users/allenday/src/didgit/backend
+
+# Full-auto if GITHUB_TOKEN is set (PAT with `gist` scope)
+GITHUB_USERNAME=$GITHUB_USERNAME \
+PRIVATE_KEY=$PRIVATE_KEY \
+GITHUB_TOKEN=$GITHUB_TOKEN \
+pnpm run onboard
 ```
 
-Equivalent ethers.js (Node):
-```javascript
-import { Wallet } from "ethers";
-const message = `github.com:${process.env.GITHUB_USERNAME}`;
-const wallet = new Wallet(process.env.PRIVATE_KEY);
-const signature = await wallet.signMessage(message);
-console.log(signature); // set this as SIGNATURE for next steps
-```
+If no `GITHUB_TOKEN` is present, the script prints the exact JSON for the gist,
+then you set `GIST_URL` and rerun the same command.
 
-### Step 3: Create Proof Gist
-Prerequisite: either:
-- `YOUR_GITHUB_TOKEN` (PAT with `gist` scope) or
-- Be logged into GitHub and can paste manually at https://gist.github.com.
+Notes:
+- `GITHUB_TOKEN` is optional. If present, full-auto gist creation is used.
+- The script checks your Base Sepolia ETH balance before submitting.
+- Use `DIDGIT_CHAIN=base-sepolia` to select a chain (default is `base-sepolia`).
 
-Capture the gist URL as `$GIST_URL` for later.
+---
 
-If using GitHub UI, create a public gist named `didgit-proof.json` with this content (edit fields) and copy the gist URL:
-```json
-{
-  "domain": "github.com",
-  "username": "YOUR_USERNAME",
-  "wallet": "0xYOUR_WALLET",
-  "message": "github.com:YOUR_USERNAME",
-  "signature": "0xYOUR_SIGNATURE",
-  "chain_id": 84532,
-  "schema_uid": "0x6ba0509abc1a1ed41df2cce6cbc7350ea21922dae7fcbc408b54150a40be66af"
-}
-```
+## Step 3: Manual fallback (only if you skipped full-auto)
 
-If using curl + token:
+Create a **public** gist named `didgit-proof.json` with the JSON printed by the script.
+Then export `GIST_URL` and rerun `pnpm run onboard`.
+
+Example rerun:
 ```bash
-GIST_JSON='{"domain":"github.com","username":"YOUR_USERNAME","wallet":"0xYOUR_WALLET","message":"github.com:YOUR_USERNAME","signature":"0xYOUR_SIGNATURE","chain_id":84532,"schema_uid":"0x6ba0509abc1a1ed41df2cce6cbc7350ea21922dae7fcbc408b54150a40be66af"}'
-RESPONSE=$(curl -s -X POST https://api.github.com/gists \
-  -H "Authorization: token YOUR_GITHUB_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d "{\"description\":\"didgit.dev identity proof\",\"public\":true,\"files\":{\"didgit-proof.json\":{\"content\":\"${GIST_JSON//\"/\\\"}\"}}}")
-export GIST_URL=$(echo "$RESPONSE" | jq -r '.html_url')
-echo "$GIST_URL"
+GITHUB_USERNAME=$GITHUB_USERNAME \
+PRIVATE_KEY=$PRIVATE_KEY \
+GIST_URL="https://gist.github.com/<user>/<gist-id>" \
+pnpm run onboard
 ```
 
-In either case, export `GIST_URL` from the response.
+---
 
-### Step 4: Submit Attestation
+## Step 4: Output (trimmed)
 
-From `didgit/backend` (deps already installed), ensure environment variables are set:
-- `GITHUB_USERNAME`
-- `WALLET_ADDRESS`
-- `PRIVATE_KEY`
-- `SIGNATURE`
-- `GIST_URL`
+The script prints only:
+- `TX` (transaction hash)
+- `UID` (attestation UID)
+- `Kernel` (derived Kernel address)
+- `Kernel balance` (and whether to skip top-up)
+- `Basescan URL`, `EASscan URL`, `EASscan Address`
 
-Then attest:
+Verify:
+- Basescan: https://sepolia.basescan.org/tx/<TX>
+- EASscan: https://base-sepolia.easscan.org/attestation/view/<UID>
+- EASscan by address: https://base-sepolia.easscan.org/address/<WALLET_ADDRESS>
+
+---
+
+## Automatic Commit Attestations (optional, requires verifier)
+
+This enables a **session key** so the verifier can attest commits on your behalf.
+It requires a pre-signed permission blob from the verifier.
+
+### Step 5: Fund your Kernel
+
 ```bash
-cd didgit/backend
-pnpm run attest:identity
-# or flags:
-pnpm run attest:identity -- \
-  --private-key 0x<YOUR_WALLET_KEY> \
-  --username $GITHUB_USERNAME \
-  --wallet $WALLET_ADDRESS \
-  --signature $SIGNATURE \
-  --proof-url $GIST_URL
+cast send <KERNEL_ADDRESS> --value 0.01ether --rpc-url https://sepolia.base.org
 ```
 
-Script location: `backend/src/attest-identity.ts`
-Fields (schema order): domain, username, wallet, message, signature, proof_url.
-Outputs: TX + UID for the identity attestation (no Kernel here).
+Skip funding if your Kernel already has >= 0.1 ETH.
 
-### Step 5: Verify identity attestation
-Check on EAS explorer:
-- https://base-sepolia.easscan.org/address/YOUR_WALLET_ADDRESS
+### Step 6: Fetch + attest the permission blob (CLI)
 
-## Enabling Automatic Commit Attestations
+This calls the verifier worker, signs the enable typed data, and attests the permission.
 
-After identity registration, set up a **session key** so your commits are attested automatically.
-
-### What's a Session Key?
-A scoped permission that lets the didgit verifier call **only** `EAS.attest()` from your Kernel. You own the attestations, pay gas from your Kernel, and can revoke anytime.
-
-### Session Key Setup (current flow)
-Verifier key stays off user machines. You receive a permission blob from the verifier and only attest it.
-
-6) Derive your Kernel address (no verifier key):
 ```bash
-cd didgit/backend
-PRIVATE_KEY=0x<YOUR_EOA_PRIVKEY> pnpm run kernel:address
-# prints EOA + Kernel
+cd /Users/allenday/src/didgit/backend
+
+PRIVATE_KEY=$PRIVATE_KEY \
+pnpm run permission:setup
 ```
 
-7) Fund your Kernel (Base Sepolia, ~0.01 ETH):
+Optional:
+- `PERMISSION_API_URL` (default `https://didgit-permission-blob.ops7622.workers.dev`)
+- `PERMISSION_API_KEY` (default `ab95ab7e1850`)
+- `KERNEL_ADDRESS` (if you want to force a specific kernel)
+
+---
+
+## Step 7: Register repo globs
+
+Your identity attestation UID from Step 4 is required as `IDENTITY_UID`.
+
 ```bash
-cast send 0x<YOUR_KERNEL> --value 0.01ether --rpc-url https://sepolia.base.org
+cd /Users/allenday/src/didgit/backend
+
+PRIVATE_KEY=$PRIVATE_KEY \
+IDENTITY_UID=0x<IDENTITY_ATTESTATION_UID> \
+REPO_GLOBS="cyberstorm-dev/*,allenday/*" \
+pnpm run repo:register
 ```
 
-8) Attest the permission blob (from verifier) — no verifier key locally:
-```bash
-cd didgit/backend
-PRIVATE_KEY=0x<YOUR_EOA_PRIVKEY> \
-USER_KERNEL=0x<YOUR_KERNEL> \
-PERMISSION_DATA=0x<PERMISSION_BLOB_FROM_VERIFIER> \
-pnpm run permission:attest
+Examples:
+- `*/*` attest all repos
+- `username/*` all repos for a user/org
+- `username/myrepo` specific repo
+- `*/myrepo` any org/user repo named `myrepo`
 
-# Or with flags:
-pnpm run permission:attest -- \
-  --private-key 0x<YOUR_EOA_PRIVKEY> \
-  --kernel 0x<YOUR_KERNEL> \
-  --permission 0x<PERMISSION_BLOB_FROM_VERIFIER>
-```
-
-9) Register your repos (Repo Globs attestation, e.g., `yourorg/*`). The verifier will only attest commits matching your globs.
-
-After setup: your EOA key is no longer needed for attestations; the on-chain permission governs use. Revoke via EAS anytime. Gas is paid from your Kernel balance.
+---
 
 ## Troubleshooting
 
-### "Username already registered"
-The resolver enforces one-to-one mapping. If the username is taken:
-- Check if they already registered with a different wallet
-- Old attestations can be revoked, then re-register
+### Username already registered
+The resolver enforces a 1:1 mapping.
+- Check if the username is already linked to another wallet
+- Old attestations can be revoked, then re-registered
 
-### "Insufficient funds"
-They need Base Sepolia ETH. Use the faucet:
+### Insufficient funds
+You need Base Sepolia ETH. Faucet:
 https://www.coinbase.com/faucets/base-sepolia-faucet
 
-### "Invalid signature"
-- Message must be exactly `github.com:username` (lowercase username)
-- They must sign with the wallet they're linking
-- Use `personal_sign`, not `eth_sign`
+### Invalid signature
+- Message must be exactly `github.com:username` (lowercase)
+- Must sign with the wallet being linked
+- Use `personal_sign` (ethers `signMessage` is correct)
 
-### "Resolver rejected"
+### Resolver rejected
 The UsernameUniqueResolver checks:
 - Username not already taken
-- Wallet not already linked to another username
+- Wallet not already linked to a different username
 - Attester == recipient (self-attestation only)
+
+---
 
 ## Contract Addresses (Base Sepolia)
 
@@ -189,12 +184,20 @@ The UsernameUniqueResolver checks:
 | Schema Registry | `0x4200000000000000000000000000000000000020` |
 | UsernameUniqueResolver | `0xf20e5d52acf8fc64f5b456580efa3d8e4dcf16c7` |
 | Identity Schema | `0x6ba0509abc1a1ed41df2cce6cbc7350ea21922dae7fcbc408b54150a40be66af` |
+| Permission Schema | `0x6ab56e335e99f78585c89e5535b47c3c90c94c056775dbd28a57490b07e2e9b6` |
+| Repo Globs Schema | `0x79cb78c31678d34847273f605290b2ab56db29a057fdad8facdcc492b9cf2e74` |
+
+---
 
 ## Why This Matters
 
 Identity is the primitive. Without verified identity:
-- Agents can't build reputation
-- Contributions can't be attributed
-- Bounties can't be paid to the right wallet
+- Agents cannot build reputation
+- Contributions cannot be attributed
+- Bounties cannot be paid to the right wallet
 
-didgit.dev solves this with on-chain attestations that anyone can verify.
+Didgit solves this with on-chain attestations that anyone can verify.
+
+---
+
+This skill is part of cyberstorm.dev.
