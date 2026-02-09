@@ -120,8 +120,6 @@ Outputs: TX + UID for the identity attestation (no Kernel here).
 Check on EAS explorer:
 - https://base-sepolia.easscan.org/address/YOUR_WALLET_ADDRESS
 
----
-
 ## Enabling Automatic Commit Attestations
 
 After identity registration, set up a **session key** so your commits are attested automatically.
@@ -163,8 +161,6 @@ pnpm run permission:attest -- \
 
 After setup: your EOA key is no longer needed for attestations; the on-chain permission governs use. Revoke via EAS anytime. Gas is paid from your Kernel balance.
 
----
-
 ## Troubleshooting
 
 ### "Username already registered"
@@ -186,8 +182,6 @@ The UsernameUniqueResolver checks:
 - Username not already taken
 - Wallet not already linked to another username
 - Attester == recipient (self-attestation only)
-
----
 
 ## Contract Addresses (Base Sepolia)
 
