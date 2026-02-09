@@ -158,7 +158,7 @@ export function buildCumulativeChart(timestamps: number[]): ChartDataPoint[] {
   let cumulative = 0;
 
   for (const time of sorted) {
-    const date = new Date(time * 1000).toISOString().split('T')[0];
+    const date = new Date(time * 1000).toISOString().slice(0, 10);
     cumulative += 1;
     dailyCounts.set(date, cumulative);
   }
