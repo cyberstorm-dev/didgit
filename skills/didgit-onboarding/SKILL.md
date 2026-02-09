@@ -113,11 +113,11 @@ pnpm run attest:identity -- \
 
 Script location: `backend/src/attest-identity.ts`
 Fields (schema order): domain, username, wallet, message, signature, proof_url.
-After run, capture `UID` from output.
+Outputs: TX + UID for the identity attestation (no Kernel here).
 
-### Step 5: Verify
+### Step 5: Verify identity attestation
 
-Check your attestation on EAS explorer:
+Check on EAS explorer:
 - https://base-sepolia.easscan.org/address/YOUR_WALLET_ADDRESS
 
 ---
@@ -167,19 +167,19 @@ A scoped permission that lets the didgit verifier call **only** `EAS.attest()` f
 ### Session Key Setup (current flow)
 Verifier key stays off user machines. You receive a permission blob from the verifier and only attest it.
 
-5) Derive your Kernel address (no verifier key):
+6) Derive your Kernel address (no verifier key):
 ```bash
 cd didgit/backend
 PRIVATE_KEY=0x<YOUR_EOA_PRIVKEY> pnpm run kernel:address
 # prints EOA + Kernel
 ```
 
-6) Fund your Kernel (Base Sepolia, ~0.01 ETH):
+7) Fund your Kernel (Base Sepolia, ~0.01 ETH):
 ```bash
 cast send 0x<YOUR_KERNEL> --value 0.01ether --rpc-url https://sepolia.base.org
 ```
 
-7) Attest the permission blob (from verifier) — no verifier key locally:
+8) Attest the permission blob (from verifier) — no verifier key locally:
 ```bash
 cd didgit/backend
 PRIVATE_KEY=0x<YOUR_EOA_PRIVKEY> \
@@ -194,7 +194,7 @@ pnpm run permission:attest -- \
   --permission 0x<PERMISSION_BLOB_FROM_VERIFIER>
 ```
 
-8) Register your repos (Repo Globs attestation, e.g., `yourorg/*`). The verifier will only attest commits matching your globs.
+9) Register your repos (Repo Globs attestation, e.g., `yourorg/*`). The verifier will only attest commits matching your globs.
 
 After setup: your EOA key is no longer needed for attestations; the on-chain permission governs use. Revoke via EAS anytime. Gas is paid from your Kernel balance.
 
