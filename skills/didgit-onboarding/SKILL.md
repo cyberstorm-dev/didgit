@@ -223,13 +223,13 @@ A scoped permission that lets the didgit verifier create attestations on your be
 
 ### Setup (Session Key) — current flow
 
-We’re moving to verifierless UX. For now, you do NOT need the verifier key. You’ll get a permission blob from the verifier and only need to attest it.
+Verifier key stays off user machines. You receive a permission blob and just attest it.
 
-5) Get your Kernel address (no verifier key):
+5) Derive your Kernel address (no verifier key):
 ```bash
 cd didgit/backend
 PRIVATE_KEY=0x<YOUR_EOA_PRIVKEY> pnpm run kernel:address
-# prints EOA + Kernel
+# prints EOA + Kernel in one step
 ```
 
 6) Fund your Kernel (Base Sepolia):
@@ -237,7 +237,7 @@ PRIVATE_KEY=0x<YOUR_EOA_PRIVKEY> pnpm run kernel:address
 cast send 0x<YOUR_KERNEL> --value 0.01ether --rpc-url https://sepolia.base.org
 ```
 
-7) Attest the permission blob (provided by verifier) — no verifier key locally:
+7) Attest the permission blob (from verifier) — no verifier key locally:
 ```bash
 cd didgit/backend
 PRIVATE_KEY=0x<YOUR_EOA_PRIVKEY> \
