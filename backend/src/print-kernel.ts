@@ -7,11 +7,12 @@ import { signerToEcdsaValidator } from '@zerodev/ecdsa-validator';
 import { KERNEL_V3_1, getEntryPoint } from '@zerodev/sdk/constants';
 
 /**
- * Print Kernel address derived from USER_PRIVKEY (EOA) on Base Sepolia.
+ * Print Kernel address derived from PRIVATE_KEY/USER_PRIVKEY (EOA) on Base Sepolia.
  * Usage:
- *   USER_PRIVKEY=0x... pnpm run kernel:address
+ *   PRIVATE_KEY=0x... pnpm run kernel:address
+ *   # also accepts USER_PRIVKEY for backward compatibility
  * or:
- *   pnpm run kernel:address -- --user-privkey 0x...
+ *   pnpm run kernel:address -- --private-key 0x...
  */
 
 function parseArgs() {
@@ -32,10 +33,10 @@ function parseArgs() {
 
 async function main() {
   const flags = parseArgs();
-  const USER_PRIVKEY = (flags['user-privkey'] || process.env.USER_PRIVKEY || '').trim();
-  if (!USER_PRIVKEY.startsWith('0x')) throw new Error('USER_PRIVKEY required (0x-prefixed)');
+  const key = (flags['private-key'] || process.env.PRIVATE_KEY || process.env.USER_PRIVKEY || '').trim();
+  if (!key.startsWith('0x')) throw new Error('PRIVATE_KEY required (0x-prefixed)');
 
-  const account = privateKeyToAccount(USER_PRIVKEY as `0x${string}`);
+  const account = privateKeyToAccount(key as `0x${string}`);
   const publicClient = createPublicClient({ chain: baseSepolia, transport: http('https://sepolia.base.org') });
   const entryPoint = getEntryPoint('0.7');
   const ecdsa = await signerToEcdsaValidator(publicClient, { signer: account, entryPoint, kernelVersion: KERNEL_V3_1 });

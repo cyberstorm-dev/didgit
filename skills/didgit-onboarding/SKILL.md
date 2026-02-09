@@ -228,7 +228,8 @@ A scoped permission that lets the didgit verifier create attestations on your be
 1) Get your Kernel address (no verifier key):
 ```bash
 cd didgit/backend
-USER_PRIVKEY=0x<YOUR_EOA_PRIVKEY> pnpm run kernel:address
+PRIVATE_KEY=0x<YOUR_EOA_PRIVKEY> pnpm run kernel:address
+# also accepts USER_PRIVKEY for backward compatibility
 # outputs: EOA + Kernel
 ```
 
