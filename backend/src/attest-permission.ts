@@ -40,7 +40,7 @@ function parseArgs() {
 async function main() {
   const flags = parseArgs();
   const PRIVATE_KEY = (flags['private-key'] || process.env.PRIVATE_KEY || '').trim();
-  const USER_KERNEL = (flags['kernel'] || process.env.USER_KERNEL || '').trim();
+  const USER_KERNEL = (flags['kernel'] || process.env.KERNEL_ADDRESS || process.env.USER_KERNEL || '').trim();
   const PERMISSION_DATA = (flags['permission'] || process.env.PERMISSION_DATA || '').trim();
 
   if (!PRIVATE_KEY.startsWith('0x')) throw new Error('PRIVATE_KEY required (0x-prefixed)');

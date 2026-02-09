@@ -104,7 +104,10 @@ async function main() {
   console.log('TX:', tx);
   const receipt = await publicClient.waitForTransactionReceipt({ hash: tx });
   const log = receipt.logs.find((l) => l.topics?.length > 1);
-  console.log('UID:', log?.topics[1]);
+  const uid = log?.topics[1];
+  console.log('UID:', uid);
+  if (tx) console.log('BaseScan:', `https://sepolia.basescan.org/tx/${tx}`);
+  if (uid) console.log('EASscan:', `https://base-sepolia.easscan.org/attestation/view/${uid}`);
 }
 
 main().catch((err) => {
