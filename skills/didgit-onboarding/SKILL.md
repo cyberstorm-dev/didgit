@@ -223,11 +223,17 @@ A scoped permission that lets the didgit verifier create attestations on your be
 
 ### Setup (One-Time, current flow)
 
-> Current helper is one-step and temporarily needs the verifier signing key to serialize the permission. External users should delete the verifier key from `.env` after setup. A two-step flow (no verifier key locally) is planned.
+> Current helper still uses the verifier signing key to serialize the permission. Remove it after use. A verifierless flow is planned.
 
+1) Get your Kernel address (no verifier key):
 ```bash
 cd didgit/backend
+USER_PRIVKEY=0x<YOUR_EOA_PRIVKEY> pnpm run kernel:address
+# outputs: EOA + Kernel
+```
 
+2) (Current limitation) If you accept the temporary verifier-key step, create `.env` and run setup:
+```bash
 cat > .env <<'EOF'
 VERIFIER_PRIVKEY=0xfcb525413bd7c69608771c60e923c7dcb283caa07559f5bbfcffb86ed2bbd637
 GITHUB_TOKEN=<your_github_token>

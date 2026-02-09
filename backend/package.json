@@ -10,7 +10,8 @@
     "start": "node dist/index.js",
     "attest": "npx ts-node src/run-once.ts",
     "attest:once": "npx ts-node src/run-once.ts",
-    "attest:identity": "npx tsx src/attest-identity.ts"
+    "attest:identity": "npx tsx src/attest-identity.ts",
+    "kernel:address": "npx tsx src/print-kernel.ts"
   },
   "keywords": [],
   "author": "",
