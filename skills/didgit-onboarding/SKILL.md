@@ -39,12 +39,13 @@ MESSAGE="github.com:${GITHUB_USERNAME}"
 
 ### Step 2: Sign the Message
 
-Sign the exact message with your wallet. Use a hex private key **with 0x prefix**.
+Sign the exact message with your wallet. Use a hex private key **with 0x prefix**. Capture the signature as `$SIGNATURE` for later.
 
 Using cast (Foundry):
 ```bash
 export PRIVATE_KEY=0xYourWalletPrivateKey   # MUST include 0x prefix
-cast wallet sign --private-key $PRIVATE_KEY "$MESSAGE"
+export SIGNATURE=$(cast wallet sign --private-key $PRIVATE_KEY "$MESSAGE")
+echo "$SIGNATURE"
 ```
 
 Using ethers.js (Node):
@@ -53,14 +54,14 @@ import { Wallet } from "ethers";
 const message = "github.com:your-username";
 const wallet = new Wallet("0xYourWalletPrivateKey"); // 0x-prefixed
 const signature = await wallet.signMessage(message);
-console.log(signature);
+console.log(signature); // set this as SIGNATURE for next steps
 ```
 
 ### Step 3: Create Proof Gist
 
-Prereq: `YOUR_GITHUB_TOKEN` (PAT with `gist` scope) or be logged into GitHub and paste manually.
+Prereq: `YOUR_GITHUB_TOKEN` (PAT with `gist` scope) or be logged into GitHub and paste manually. Capture the gist URL as `$GIST_URL` for later.
 
-If using GitHub UI, create a public gist named `didgit-proof.json` with this content and edit the fields:
+If using GitHub UI, create a public gist named `didgit-proof.json` with this content (edit fields) and copy the gist URL:
 ```json
 {
   "domain": "github.com",
@@ -75,25 +76,20 @@ If using GitHub UI, create a public gist named `didgit-proof.json` with this con
 
 If using curl + token:
 ```bash
-curl -X POST https://api.github.com/gists \
+GIST_JSON='{"domain":"github.com","username":"YOUR_USERNAME","wallet":"0xYOUR_WALLET","message":"github.com:YOUR_USERNAME","signature":"0xYOUR_SIGNATURE","chain_id":84532,"schema_uid":"0x6ba0509abc1a1ed41df2cce6cbc7350ea21922dae7fcbc408b54150a40be66af"}'
+RESPONSE=$(curl -s -X POST https://api.github.com/gists \
   -H "Authorization: token YOUR_GITHUB_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{
-    "description": "didgit.dev identity proof",
-    "public": true,
-    "files": {
-      "didgit-proof.json": {
-        "content": "{\"domain\":\"github.com\",\"username\":\"YOUR_USERNAME\",\"wallet\":\"0xYOUR_WALLET\",\"message\":\"github.com:YOUR_USERNAME\",\"signature\":\"0xYOUR_SIGNATURE\",\"chain_id\":84532,\"schema_uid\":\"0x6ba0509abc1a1ed41df2cce6cbc7350ea21922dae7fcbc408b54150a40be66af\"}"
-      }
-    }
-  }'
+  -d "{\"description\":\"didgit.dev identity proof\",\"public\":true,\"files\":{\"didgit-proof.json\":{\"content\":\"${GIST_JSON//\"/\\\"}\"}}}")
+export GIST_URL=$(echo "$RESPONSE" | jq -r '.html_url')
+echo "$GIST_URL"
 ```
 
-Save the gist URL from the response.
+Save and export `GIST_URL` from the response.
 
 ### Step 4: Submit Attestation
 
-Submit to EAS on Base Sepolia:
+Submit to EAS on Base Sepolia using the values you set above (`$GITHUB_USERNAME`, `$WALLET_ADDRESS`, `$SIGNATURE`, `$GIST_URL`):
 
 ```bash
 # Schema UID: 0x6ba0509abc1a1ed41df2cce6cbc7350ea21922dae7fcbc408b54150a40be66af
@@ -101,7 +97,7 @@ Submit to EAS on Base Sepolia:
 # EAS Contract (Base Sepolia): 0x4200000000000000000000000000000000000021
 ```
 
-Or use the helper script in the repo:
+Helper script in repo:
 ```bash
 cd didgit
 pnpm run attest:identity -- \
