@@ -232,7 +232,7 @@ PRIVATE_KEY=0x<YOUR_EOA_PRIVKEY> pnpm run kernel:address
 # prints EOA + Kernel in one step
 ```
 
-6) Fund your Kernel (Base Sepolia):
+6) Fund your Kernel (Base Sepolia, ~0.01 ETH):
 ```bash
 cast send 0x<YOUR_KERNEL> --value 0.01ether --rpc-url https://sepolia.base.org
 ```
@@ -253,15 +253,6 @@ pnpm run permission:attest -- \
 ```
 
 After this, commits will be attested from your Kernel; you can revoke via EAS anytime.
-
-### Fund Your Kernel
-
-The setup prints your Kernel address. Fund it on Base Sepolia:
-
-```bash
-# ~0.01 ETH covers 1000+ attestations
-cast send 0x<YOUR_KERNEL> --value 0.01ether --rpc-url https://sepolia.base.org
-```
 
 ### Register Your Repos
 
