@@ -211,25 +211,19 @@ The UsernameUniqueResolver checks:
 
 ## Enabling Automatic Commit Attestations
 
-After identity registration, set up a **session key** so your commits are attested automatically:
+After identity registration, set up a **session key** so your commits are attested automatically.
 
 ### What's a Session Key?
+A scoped permission that lets the didgit verifier call **only** `EAS.attest()` from your Kernel. You own the attestations, pay gas from your Kernel, and can revoke anytime.
 
-A scoped permission that lets the didgit verifier create attestations on your behalf:
-- **You own** all attestations (from your Kernel address)
-- **You pay** gas (from your Kernel balance)
-- **You revoke** anytime (remove the permission)
-- **Verifier can only** call EAS.attest() — nothing else
-
-### Setup (Session Key) — current flow
-
-Verifier key stays off user machines. You receive a permission blob and just attest it.
+### Session Key Setup (current flow)
+Verifier key stays off user machines. You receive a permission blob from the verifier and only attest it.
 
 5) Derive your Kernel address (no verifier key):
 ```bash
 cd didgit/backend
 PRIVATE_KEY=0x<YOUR_EOA_PRIVKEY> pnpm run kernel:address
-# prints EOA + Kernel in one step
+# prints EOA + Kernel
 ```
 
 6) Fund your Kernel (Base Sepolia, ~0.01 ETH):
@@ -252,26 +246,12 @@ pnpm run permission:attest -- \
   --permission 0x<PERMISSION_BLOB_FROM_VERIFIER>
 ```
 
-After this, commits will be attested from your Kernel; you can revoke via EAS anytime.
+8) Register your repos (Repo Globs attestation, e.g., `yourorg/*`). The verifier will only attest commits matching your globs.
 
-### Register Your Repos
-
-Attest Repo Globs defining which repos to track (e.g., `yourorg/*`). The verifier will only attest commits matching your globs.
-
-### After Setup
-
-- Your EOA key is not needed again; the verifier uses the on-chain permission
-- Attestations are from your Kernel; you can revoke via EAS anytime
-- Gas is paid from your Kernel balance
+After setup: your EOA key is no longer needed for attestations; the on-chain permission governs use. Revoke via EAS anytime. Gas is paid from your Kernel balance.
 
 ### Planned improvement
-
-A two-step flow that avoids sharing the verifier key with users:
-1) User derives Kernel address and submits it.
-2) Service signs the permission blob with the verifier key.
-3) User attests the blob with their EOA key only.
-
-Docs and CLI will be updated when this is live.
+A verifier-side self-serve flow: user provides Kernel address → service signs the permission blob → user attests it with their EOA. No human-in-the-loop, no verifier key exposure.
 
 ---
 
