@@ -57,16 +57,21 @@ The verifier CANNOT:
    - Defines which repos to attest commits for
    - e.g., `cyberstorm-dev/*` or `myorg/myrepo`
 
-## Setup Steps
+## Setup Steps (current flow)
 
-### 1. Export your private key
+> Note: The current CLI is a one-step helper that temporarily requires the verifier signing key locally to serialize the permission. We will move this to a service so external users never handle the verifier key. For now, delete the verifier key from your env after setup.
 
-You need your EOA private key for the one-time setup:
+### 1. Create `.env`
 
-```bash
-# Example: export from your wallet
-export USER_PRIVKEY=0x...
 ```
+VERIFIER_PRIVKEY=0xfcb525413bd7c69608771c60e923c7dcb283caa07559f5bbfcffb86ed2bbd637
+GITHUB_TOKEN=<your_github_token>
+BUNDLER_RPC=https://rpc.zerodev.app/api/v3/aa40f236-4eff-41e1-8737-ab95ab7e1850/chain/84532
+USER_PRIVKEY=0x<your EOA privkey>
+```
+
+- Do **not** reuse the example USER_PRIVKEY; use your own EOA key. It is used locally only to attest your permission.
+- The verifier key is only used to sign the serialized permission blob; your EOA is the on-chain attester.
 
 ### 2. Run the setup CLI
 
@@ -102,6 +107,13 @@ Your Kernel pays gas for attestations. Send Base Sepolia ETH to your Kernel addr
 The verifier handles everything from here. Your commits get attested automatically. You just need to:
 - Keep gas in your Kernel
 - Update repo globs if you want to track different repos
+
+## Upcoming improvement (planned)
+- Two-step flow so external users never load `VERIFIER_PRIVKEY` locally:
+  1) User derives Kernel address and submits it.
+  2) Service signs the permission blob with the verifier key.
+  3) User attests the blob with their EOA key only.
+- When available, this section will be updated and the setup CLI will be split accordingly.
 
 ## How Attestations Work After Setup
 

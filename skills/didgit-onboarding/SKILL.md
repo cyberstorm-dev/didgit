@@ -199,41 +199,58 @@ A scoped permission that lets the didgit verifier create attestations on your be
 - **You revoke** anytime (remove the permission)
 - **Verifier can only** call EAS.attest() — nothing else
 
-### Setup (One-Time)
+### Setup (One-Time, current flow)
+
+> Current helper is one-step and temporarily needs the verifier signing key to serialize the permission. External users should delete the verifier key from `.env` after setup. A two-step flow (no verifier key locally) is planned.
 
 ```bash
 cd didgit/backend
 
-# Requires your wallet's private key (only for this setup)
-USER_PRIVKEY=0x... \
-VERIFIER_PRIVKEY=0x... \
-BUNDLER_RPC=<zerodev-bundler> \
-npm run setup-session-key
+cat > .env <<'EOF'
+VERIFIER_PRIVKEY=0xfcb525413bd7c69608771c60e923c7dcb283caa07559f5bbfcffb86ed2bbd637
+GITHUB_TOKEN=<your_github_token>
+BUNDLER_RPC=https://rpc.zerodev.app/api/v3/aa40f236-4eff-41e1-8737-ab95ab7e1850/chain/84532
+USER_PRIVKEY=0x<YOUR_EOA_PRIVKEY>
+EOF
+
+npx tsx src/setup-permission.ts
 ```
 
-This creates a `.permission-account.json` containing your serialized permission.
+What it does:
+1) Derives your Kernel from your EOA
+2) Builds a permission scoped to `EAS.attest()` and signs it with the verifier key
+3) Attests the permission to EAS **as you** (attester = your EOA)
+4) Prints your Kernel address and permission attestation UID
+
+After you run it: remove `VERIFIER_PRIVKEY` from `.env` if desired.
 
 ### Fund Your Kernel
 
-The setup will show your Kernel address. Fund it with ETH:
+The setup prints your Kernel address. Fund it on Base Sepolia:
 
 ```bash
-# ~0.01 ETH covers 1000+ attestations on Base Sepolia
+# ~0.01 ETH covers 1000+ attestations
 cast send 0x<YOUR_KERNEL> --value 0.01ether --rpc-url https://sepolia.base.org
 ```
 
 ### Register Your Repos
 
-Create a Repo Globs attestation specifying which repos to track:
-- Pattern: `yourorg/*` or `yourorg/specific-repo`
-- This tells the verifier which commits to attest
+Attest Repo Globs defining which repos to track (e.g., `yourorg/*`). The verifier will only attest commits matching your globs.
 
 ### After Setup
 
-- Your private key is no longer needed
-- Commits to registered repos are attested automatically
-- Attestations are owned by your Kernel
+- Your EOA key is not needed again; the verifier uses the on-chain permission
+- Attestations are from your Kernel; you can revoke via EAS anytime
 - Gas is paid from your Kernel balance
+
+### Planned improvement
+
+A two-step flow that avoids sharing the verifier key with users:
+1) User derives Kernel address and submits it.
+2) Service signs the permission blob with the verifier key.
+3) User attests the blob with their EOA key only.
+
+Docs and CLI will be updated when this is live.
 
 ---
 
