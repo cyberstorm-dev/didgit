@@ -3,7 +3,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "vitest run"
+    "test": "vitest run",
+    "setup": "node scripts/dx.ts setup",
+    "build:web": "node scripts/dx.ts build:web",
+    "verify": "node scripts/dx.ts verify"
   },
   "devDependencies": {
     "vitest": "^2.1.9"
