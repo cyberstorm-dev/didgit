@@ -89,23 +89,21 @@ Save and export `GIST_URL` from the response.
 
 ### Step 4: Submit Attestation
 
-Submit to EAS on Base Sepolia using the values you set above (`$GITHUB_USERNAME`, `$WALLET_ADDRESS`, `$SIGNATURE`, `$GIST_URL`):
+Use EAS CLI directly (no repo scripts needed). Requires `npx @ethereum-attestation-service/eas-cli@1.5.0`.
 
 ```bash
-# Schema UID: 0x6ba0509abc1a1ed41df2cce6cbc7350ea21922dae7fcbc408b54150a40be66af
-# Resolver: 0xf20e5d52acf8fc64f5b456580efa3d8e4dcf16c7
-# EAS Contract (Base Sepolia): 0x4200000000000000000000000000000000000021
+npx @ethereum-attestation-service/eas-cli@1.5.0 attest \
+  --rpcUrl https://sepolia.base.org \
+  --schema 0x6ba0509abc1a1ed41df2cce6cbc7350ea21922dae7fcbc408b54150a40be66af \
+  --recipient $WALLET_ADDRESS \
+  --data '["github.com","'"'"'"${GITHUB_USERNAME}'"'"'"','"'"'"${WALLET_ADDRESS}'"'"'"','"'"'"github.com:${GITHUB_USERNAME}'"'"'"','"'"'"${SIGNATURE}'"'"'"','"'"'"${GIST_URL}'"'"'"]' \
+  --revocable \
+  --private-key $PRIVATE_KEY   # 0x-prefixed
 ```
 
-Helper script in repo:
-```bash
-cd didgit
-pnpm run attest:identity -- \
-  --username $GITHUB_USERNAME \
-  --wallet $WALLET_ADDRESS \
-  --signature $SIGNATURE \
-  --proof-url $GIST_URL
-```
+Fields (schema order): domain, username, wallet, message, signature, proof_url.
+
+After submit, note the attestation UID from CLI output or EAScan.
 
 ### Step 5: Verify
 
