@@ -25,9 +25,9 @@ If you have a GitHub account and wallet access, you can attest your own identity
 
 ### Prerequisites
 
-- GitHub account with API access (OAuth token or PAT with `gist` scope)
-- Wallet with private key access (for signing)
-- ~$0.01 ETH on Base Sepolia for gas
+- GitHub account with API access: OAuth token or PAT with `gist` scope (`YOUR_GITHUB_TOKEN`), or be logged into GitHub if using the UI.
+- Wallet with private key access (hex, 0x-prefixed) for signing the identity message.
+- ~$0.01 ETH on Base Sepolia for gas.
 
 ### Step 1: Prepare Your Identity Claim
 
@@ -58,8 +58,22 @@ console.log(signature);
 
 ### Step 3: Create Proof Gist
 
-Create a public gist containing your proof:
+Prereq: `YOUR_GITHUB_TOKEN` (PAT with `gist` scope) or be logged into GitHub and paste manually.
 
+If using GitHub UI, create a public gist named `didgit-proof.json` with this content and edit the fields:
+```json
+{
+  "domain": "github.com",
+  "username": "YOUR_USERNAME",
+  "wallet": "0xYOUR_WALLET",
+  "message": "github.com:YOUR_USERNAME",
+  "signature": "0xYOUR_SIGNATURE",
+  "chain_id": 84532,
+  "schema_uid": "0x6ba0509abc1a1ed41df2cce6cbc7350ea21922dae7fcbc408b54150a40be66af"
+}
+```
+
+If using curl + token:
 ```bash
 curl -X POST https://api.github.com/gists \
   -H "Authorization: token YOUR_GITHUB_TOKEN" \
