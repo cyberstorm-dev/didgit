@@ -122,58 +122,6 @@ Check your attestation on EAS explorer:
 
 ---
 
-## For Agents: Helping Your Human
-
-If your human wants to attest their identity, guide them through this flow.
-
-### What They Need
-
-1. **A wallet** — If they don't have one:
-   - Coinbase Wallet (easiest for Base)
-   - MetaMask + add Base network
-   - Any EVM wallet works
-
-2. **Base Sepolia ETH** — For gas (~$0.01):
-   - Faucet: https://www.coinbase.com/faucets/base-sepolia-faucet
-
-3. **GitHub account** — They probably have this already
-
-### Guided Flow
-
-**Step 1: Get their wallet address**
-```
-You: "What's your wallet address? I need it to create the identity link."
-Human: "0x..."
-```
-
-**Step 2: Have them sign a message**
-```
-You: "Open your wallet and sign this exact message: 'github.com:their-username'
-      Don't send a transaction — just sign the message. Send me the signature."
-Human: "0x..." (the signature)
-```
-
-**Step 3: Get their GitHub token** (or do OAuth)
-```
-You: "I need to create a public gist on your GitHub to prove you authorized this.
-      Either:
-      a) Give me a Personal Access Token with 'gist' scope, or
-      b) Authorize via OAuth at [link]"
-```
-
-**Step 4: You do the rest**
-- Create the proof gist via GitHub API
-- Submit the EAS attestation
-- Confirm success
-
-**Step 5: Celebrate**
-```
-You: "Done! Your GitHub (their-username) is now linked to your wallet (0x...).
-      View it here: https://base-sepolia.easscan.org/attestation/..."
-```
-
----
-
 ## Troubleshooting
 
 ### "Username already registered"
