@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { shouldRetryGitHubError, parseRetryAfterMs, getRetryDelayMs } from '../src/github';
+import { shouldRetryGitHubError, parseRetryAfterMs, getRetryDelayMs, getGitHubToken } from '../src/github';
 
 test('shouldRetryGitHubError returns true for 502/503/504/429', () => {
   assert.equal(shouldRetryGitHubError({ status: 502 }), true);
@@ -29,4 +29,15 @@ test('getRetryDelayMs honors abuse minimum', () => {
   };
   const delay = getRetryDelayMs(err as any, 1, 500, 30_000, new Date('2026-02-09T00:00:00Z'));
   assert.equal(delay, 30_000);
+});
+
+test('getGitHubToken reads from env at call time', () => {
+  const prev = process.env.GITHUB_TOKEN;
+  process.env.GITHUB_TOKEN = 'gho_test';
+  assert.equal(getGitHubToken(), 'gho_test');
+  if (prev === undefined) {
+    delete process.env.GITHUB_TOKEN;
+  } else {
+    process.env.GITHUB_TOKEN = prev;
+  }
 });

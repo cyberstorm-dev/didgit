@@ -63,7 +63,9 @@ async function requestWithRetry<T>(fn: () => Promise<T>, label: string): Promise
   throw lastErr;
 }
 
-const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+export function getGitHubToken(): string | undefined {
+  return process.env.GITHUB_TOKEN;
+}
 
 export interface CommitInfo {
   sha: string;
@@ -85,7 +87,7 @@ export async function getRecentCommits(
   repo: string,
   since?: Date
 ): Promise<CommitInfo[]> {
-  const octokit = new Octokit({ auth: GITHUB_TOKEN });
+  const octokit = new Octokit({ auth: getGitHubToken() });
 
   const { data: commits } = await requestWithRetry(
     () =>
@@ -143,7 +145,7 @@ export function parsePushEventsToCommits(events: any[]): CommitInfo[] {
 }
 
 export async function getRecentUserPushCommits(username: string, since?: Date): Promise<CommitInfo[]> {
-  const octokit = new Octokit({ auth: GITHUB_TOKEN });
+  const octokit = new Octokit({ auth: getGitHubToken() });
   const { data: events } = await requestWithRetry(
     () =>
       octokit.activity.listPublicEventsForUser({
@@ -165,7 +167,7 @@ export async function getCommit(
   sha: string
 ): Promise<CommitInfo | null> {
   try {
-    const octokit = new Octokit({ auth: GITHUB_TOKEN });
+    const octokit = new Octokit({ auth: getGitHubToken() });
 
     const { data: commit } = await requestWithRetry(
       () =>
@@ -212,7 +214,7 @@ export function matchCommitToGitHubUser(commit: CommitInfo): string | null {
  * List all public repos in an organization
  */
 export async function listOrgRepos(org: string): Promise<{ owner: string; name: string }[]> {
-  const octokit = new Octokit({ auth: GITHUB_TOKEN });
+  const octokit = new Octokit({ auth: getGitHubToken() });
 
   try {
     const repos: { owner: string; name: string }[] = [];
@@ -254,7 +256,7 @@ export async function listOrgRepos(org: string): Promise<{ owner: string; name: 
  * List repos for a user
  */
 export async function listUserRepos(username: string): Promise<{ owner: string; name: string }[]> {
-  const octokit = new Octokit({ auth: GITHUB_TOKEN });
+  const octokit = new Octokit({ auth: getGitHubToken() });
 
   try {
     const repos: { owner: string; name: string }[] = [];
