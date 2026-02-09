@@ -17,7 +17,8 @@ Use this skill to:
 - Build portable developer reputation
 - Unlock gated services that verify identity
 
-This flow avoids the didgit.dev UI and uses direct API + repo scripts.
+> [!NOTE]
+> This flow avoids the didgit.dev UI and uses direct API + repo scripts.
 
 ---
 
@@ -62,10 +63,14 @@ pnpm run onboard
 If no `GITHUB_TOKEN` is present, the script prints the exact JSON for the gist,
 then you set `GIST_URL` and rerun the same command.
 
-Notes:
-- `GITHUB_TOKEN` is optional. If present, full-auto gist creation is used.
-- The script checks your Base Sepolia ETH balance before submitting.
-- Use `DIDGIT_CHAIN=base-sepolia` to select a chain (default is `base-sepolia`).
+> [!TIP]
+> `GITHUB_TOKEN` is optional. If present, full-auto gist creation is used.
+
+> [!IMPORTANT]
+> The script checks your Base Sepolia ETH balance before submitting.
+
+> [!NOTE]
+> Use `DIDGIT_CHAIN=base-sepolia` to select a chain (default is `base-sepolia`).
 
 ---
 
@@ -111,7 +116,8 @@ It requires a pre-signed permission blob from the verifier.
 cast send <KERNEL_ADDRESS> --value 0.01ether --rpc-url https://sepolia.base.org
 ```
 
-Skip funding if your Kernel already has >= 0.1 ETH.
+> [!CAUTION]
+> Skip funding if your Kernel already has >= 0.1 ETH.
 
 ### Step 6: Fetch + attest the permission blob (CLI)
 
