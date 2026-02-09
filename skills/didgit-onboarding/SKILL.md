@@ -39,17 +39,21 @@ MESSAGE="github.com:${GITHUB_USERNAME}"
 
 ### Step 2: Sign the Message
 
-Sign the message with your wallet's private key. The signature proves you control the wallet.
+Sign the exact message with your wallet. Use a hex private key **with 0x prefix**.
 
-```javascript
-// Using ethers.js
-const message = "github.com:your-username";
-const signature = await wallet.signMessage(message);
+Using cast (Foundry):
+```bash
+export PRIVATE_KEY=0xYourWalletPrivateKey   # MUST include 0x prefix
+cast wallet sign --private-key $PRIVATE_KEY "$MESSAGE"
 ```
 
-Or via cast (Foundry):
-```bash
-cast wallet sign --private-key $PRIVATE_KEY "$MESSAGE"
+Using ethers.js (Node):
+```javascript
+import { Wallet } from "ethers";
+const message = "github.com:your-username";
+const wallet = new Wallet("0xYourWalletPrivateKey"); // 0x-prefixed
+const signature = await wallet.signMessage(message);
+console.log(signature);
 ```
 
 ### Step 3: Create Proof Gist
