@@ -73,17 +73,17 @@ cd didgit/backend
 
 # One-time setup (requires agent's private key)
 USER_PRIVKEY=0x<agent-wallet-key> \
-VERIFIER_PRIVKEY=0x<verifier-key> \
+ATTESTER_PRIVKEY=0x<attester-key> \
 BUNDLER_RPC=<zerodev-bundler-url> \
 npm run setup-session-key
 ```
 
 This:
 1. Deploys a Kernel smart account for the agent (if needed)
-2. Grants the verifier permission to call EAS.attest() on behalf of the agent
+2. Grants the attester permission to call EAS.attest() on behalf of the agent
 3. Serializes the permission for runtime use
 
-**After setup, the agent's private key is never needed again.** The verifier can attest commits automatically, but the attestations are owned by the agent's Kernel.
+**After setup, the agent's private key is never needed again.** The attester can attest commits automatically, but the attestations are owned by the agent's Kernel.
 
 ### 6. Fund the Kernel
 
@@ -91,10 +91,10 @@ The agent's Kernel pays gas for attestations:
 
 ```bash
 # Send ETH to the Kernel address (shown in setup output)
-cast send 0x<KERNEL_ADDRESS> --value 0.01ether --rpc-url https://sepolia.base.org
+cast send 0x<KERNEL_ADDRESS> --value 0.01ether --rpc-url https://mainnet.base.org
 ```
 
-0.01 ETH covers ~1000+ attestations on Base Sepolia.
+0.01 ETH covers ~1000+ attestations on Base.
 
 ## How Automatic Attestations Work
 
@@ -110,7 +110,7 @@ cast send 0x<KERNEL_ADDRESS> --value 0.01ether --rpc-url https://sepolia.base.or
 │   Backend deserializes agent's permission account               │
 │         │                                                        │
 │         ▼                                                        │
-│   Verifier signs UserOp (scoped to EAS.attest only)            │
+│   Attester signs UserOp (scoped to EAS.attest only)            │
 │         │                                                        │
 │         ▼                                                        │
 │   Agent's Kernel executes attestation                           │
@@ -124,8 +124,8 @@ cast send 0x<KERNEL_ADDRESS> --value 0.01ether --rpc-url https://sepolia.base.or
 **Key properties:**
 - Agent doesn't sign anything at runtime
 - Agent owns all attestations
-- Agent can revoke the verifier's permission anytime
-- Verifier can only call EAS.attest() — no other actions possible
+- Agent can revoke the attester's permission anytime
+- Attester can only call EAS.attest() — no other actions possible
 
 ## Security Considerations
 
@@ -149,10 +149,10 @@ The session key permission is narrowly scoped:
 - Only to the specific EAS contract
 - Zero value (no ETH transfers)
 
-If the verifier key is compromised:
+If the attester key is compromised:
 1. Revoke the permission from your Kernel
-2. Rotate verifier keys
-3. Re-run setup with new verifier
+2. Rotate attester keys
+3. Re-run setup with new attester
 
 ### Operator Disclosure
 
@@ -167,7 +167,7 @@ Consider adding to your agent's proof gist:
 }
 ```
 
-This signals to verifiers that this is an AI agent.
+This signals to attesters that this is an AI agent.
 
 ## Example: Nisto
 
@@ -193,7 +193,7 @@ This signals to verifiers that this is an AI agent.
 For organizations with multiple agents:
 
 1. **Separate identities** — Each agent gets own GitHub + Kernel
-2. **Shared verifier** — One verifier backend for all agents
+2. **Shared attester** — One attester backend for all agents
 3. **Per-agent permissions** — Each `.permission-account.json` is agent-specific
 4. **Central monitoring** — Query all agent attestations by Kernel addresses
 
@@ -202,7 +202,7 @@ For organizations with multiple agents:
 If an agent is compromised or retired:
 
 ### 1. Revoke Session Key Permission
-The agent's Kernel owner can remove the verifier's permission:
+The agent's Kernel owner can remove the attester's permission:
 
 ```typescript
 // Call from agent's EOA

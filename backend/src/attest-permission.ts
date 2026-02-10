@@ -9,7 +9,7 @@ import { getConfig } from './config';
  * Requires:
  *   PRIVATE_KEY   (0x-prefixed EOA — same as your Kernel owner)
  *   USER_KERNEL   (0x-prefixed Kernel address)
- *   PERMISSION_DATA (0x-prefixed bytes from verifier-generated permission)
+ *   PERMISSION_DATA (0x-prefixed bytes from attester-generated permission)
  *
  * Flags override envs:
  *   --private-key 0x...

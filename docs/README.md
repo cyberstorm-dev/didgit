@@ -28,7 +28,7 @@
 
 - [Architecture & Trust Model](./protocol/PROTOCOL.md)
 - [Extending to Other Platforms](./protocol/EXTENDING.md)
-- [Running Your Own Verifier](./protocol/VERIFIER.md)
+- [Running Your Own Attester](./protocol/VERIFIER.md)
 
 ---
 
@@ -39,7 +39,7 @@
 
 **Contribution Attestations (by Nisto, an AI agent):**
 - [`49f5d94` docs: complete documentation for all user personas](https://base-sepolia.easscan.org/attestation/view/0x8f4cd9861f2c8d13a6e193a80426b099a36640d180d5ae0155c120b9799af9df)
-- [`6733f4a` feat: UsernameUniqueResolverV2 with 3 roles + verifier](https://base-sepolia.easscan.org/attestation/view/0x7b1ff055295a9d53aef9c80731eabaf1c2e043fc9158f5e0a86bb9082e0bc267)
+- [`6733f4a` feat: UsernameUniqueResolverV2 with 3 roles + attester](https://base-sepolia.easscan.org/attestation/view/0x7b1ff055295a9d53aef9c80731eabaf1c2e043fc9158f5e0a86bb9082e0bc267)
 - [`52841cf` docs: add resolver and repo registration](https://base-sepolia.easscan.org/attestation/view/0xc2262c30b3d555b00fc834b11a2856a5106c9d68347fd6d770c098c44e5632e2)
 
 ---

@@ -11,7 +11,7 @@ import { createPublicClient, http, parseAbi, type Address, type Hex, encodeFunct
 import { baseSepolia } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 
-const VERIFIER_PRIVKEY = process.env.VERIFIER_PRIVKEY || '0xfcb525413bd7c69608771c60e923c7dcb283caa07559f5bbfcffb86ed2bbd637';
+const ATTESTER_PRIVKEY = process.env.ATTESTER_PRIVKEY || process.env.VERIFIER_PRIVKEY || '0xfcb525413bd7c69608771c60e923c7dcb283caa07559f5bbfcffb86ed2bbd637';
 const USER_PRIVKEY = process.env.USER_PRIVKEY || '0xbc92aa2df0e5bee540343a9b758f699c1e0d503ecb5314aae46b55280aa3c5c7';
 
 const EAS_ADDRESS = '0x4200000000000000000000000000000000000021' as Address;
@@ -39,10 +39,10 @@ async function main() {
   const kernelVersion = KERNEL_V3_1;
 
   const userAccount = privateKeyToAccount(USER_PRIVKEY as Hex);
-  const verifierAccount = privateKeyToAccount(VERIFIER_PRIVKEY as Hex);
+  const attesterAccount = privateKeyToAccount(ATTESTER_PRIVKEY as Hex);
 
   console.log('User EOA:', userAccount.address);
-  console.log('Verifier EOA:', verifierAccount.address);
+  console.log('Attester EOA:', attesterAccount.address);
 
   // Step 1: Create user's sudo validator
   const sudoValidator = await signerToEcdsaValidator(publicClient, {
@@ -53,8 +53,8 @@ async function main() {
   console.log('Sudo validator address:', sudoValidator.address);
 
   // Step 2: Create verifier's permission
-  const verifierSigner = await toECDSASigner({
-    signer: verifierAccount
+  const attesterSigner = await toECDSASigner({
+    signer: attesterAccount
   });
 
   const easAbi = parseAbi([
@@ -74,7 +74,7 @@ async function main() {
   });
 
   const permissionValidator = await toPermissionValidator(publicClient, {
-    signer: verifierSigner,
+    signer: attesterSigner,
     policies: [callPolicy],
     entryPoint,
     kernelVersion

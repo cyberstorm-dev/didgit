@@ -3,8 +3,8 @@ pragma solidity ^0.8.23;
 
 /**
  * UsernameUniqueResolver V2
- * - 3 roles: owner, verifier, treasury
- * - Gist verification via verifier signature
+ * - 3 roles: owner, verifier (attester), treasury
+ * - Gist verification via attester signature (role name: verifier)
  * - Registration fees
  */
 

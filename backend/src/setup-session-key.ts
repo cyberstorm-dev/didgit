@@ -1,19 +1,18 @@
 /**
  * Setup session key on existing Kernel
  * 
- * Goal: Allow verifier to call EAS.attest() on behalf of user's Kernel
+ * Goal: Allow attester to call EAS.attest() on behalf of user's Kernel
  * User's Kernel pays gas, attestation comes FROM user's address
  * 
  * This is a ONE-TIME setup script run during onboarding.
  * Requires USER_PRIVKEY only for this setup, not for runtime attestations.
  * 
  * The output is a serialized permission account that can be deserialized
- * at runtime using only the verifier's private key.
+ * at runtime using only the attester's private key.
  */
 
 import 'dotenv/config';
 import { createPublicClient, createWalletClient, http, type Address, type Hex } from 'viem';
-import { baseSepolia } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 import { 
   createKernelAccount,
@@ -28,28 +27,30 @@ import { toCallPolicy, CallPolicyVersion } from '@zerodev/permissions/policies';
 import { toECDSASigner } from '@zerodev/permissions/signers';
 import { KERNEL_V3_1, getEntryPoint } from '@zerodev/sdk/constants';
 import { http as viemHttp } from 'viem';
+import { getConfig } from './config';
+import { getAttesterPrivKey } from './env';
 
-const EAS_ADDRESS = '0x4200000000000000000000000000000000000021' as Address;
+const ACTIVE = getConfig();
+const EAS_ADDRESS = ACTIVE.easAddress as Address;
 const ATTEST_SELECTOR = '0xf17325e7' as Hex; // attest((bytes32,(address,uint64,bool,bytes32,bytes,uint256)))
 
 async function main() {
   const USER_PRIVKEY = process.env.USER_PRIVKEY as Hex;
-  const VERIFIER_PRIVKEY = process.env.VERIFIER_PRIVKEY as Hex;
+  const ATTESTER_PRIVKEY = getAttesterPrivKey() as Hex;
   const BUNDLER_RPC = process.env.BUNDLER_RPC;
   
   if (!USER_PRIVKEY) throw new Error('USER_PRIVKEY required for setup');
-  if (!VERIFIER_PRIVKEY) throw new Error('VERIFIER_PRIVKEY required');
   if (!BUNDLER_RPC) throw new Error('BUNDLER_RPC required');
 
   const userAccount = privateKeyToAccount(USER_PRIVKEY);
-  const verifierAccount = privateKeyToAccount(VERIFIER_PRIVKEY);
+  const attesterAccount = privateKeyToAccount(ATTESTER_PRIVKEY);
   
   console.log('[setup] User EOA:', userAccount.address);
-  console.log('[setup] Verifier:', verifierAccount.address);
+  console.log('[setup] Attester:', attesterAccount.address);
 
   const publicClient = createPublicClient({
-    chain: baseSepolia,
-    transport: http()
+    chain: ACTIVE.chain,
+    transport: http(ACTIVE.rpcUrl)
   });
 
   const entryPoint = getEntryPoint('0.7');
@@ -77,12 +78,12 @@ async function main() {
   console.log('[setup] Kernel balance:', Number(balance) / 1e18, 'ETH');
 
   if (balance < BigInt(1e15)) { // Less than 0.001 ETH
-    console.log('[setup] ⚠️  Low balance - funding from verifier...');
+    console.log('[setup] ⚠️  Low balance - funding from attester...');
     
     const walletClient = createWalletClient({
-      account: verifierAccount,
-      chain: baseSepolia,
-      transport: http()
+      account: attesterAccount,
+      chain: ACTIVE.chain,
+      transport: http(ACTIVE.rpcUrl)
     });
 
     const fundTx = await walletClient.sendTransaction({
@@ -93,7 +94,7 @@ async function main() {
     await publicClient.waitForTransactionReceipt({ hash: fundTx });
   }
 
-  // Create permission that allows verifier to call EAS.attest()
+  // Create permission that allows attester to call EAS.attest()
   const callPolicy = toCallPolicy({
     policyVersion: CallPolicyVersion.V0_0_4,
     permissions: [
@@ -105,14 +106,14 @@ async function main() {
     ]
   });
 
-  // Create ECDSA signer for verifier (the session key holder)
-  const verifierSigner = await toECDSASigner({
-    signer: verifierAccount
+  // Create ECDSA signer for attester (the session key holder)
+  const attesterSigner = await toECDSASigner({
+    signer: attesterAccount
   });
 
   // Create permission validator
   const permissionValidator = await toPermissionValidator(publicClient, {
-    signer: verifierSigner,
+    signer: attesterSigner,
     policies: [callPolicy],
     entryPoint,
     kernelVersion: KERNEL_V3_1
@@ -140,7 +141,7 @@ async function main() {
   // - The account address
   console.log('[setup] Serializing permission account...');
   
-  const serialized = await serializePermissionAccount(kernelWithPermission, VERIFIER_PRIVKEY);
+  const serialized = await serializePermissionAccount(kernelWithPermission, ATTESTER_PRIVKEY);
   
   console.log('[setup] ✓ Serialized permission account');
   console.log('[setup] Length:', serialized.length, 'chars');
@@ -153,7 +154,7 @@ async function main() {
     JSON.stringify({ 
       kernelAddress: kernelWithPermission.address,
       serialized,
-      verifier: verifierAccount.address,
+      attester: attesterAccount.address,
       userEOA: userAccount.address,
       easAddress: EAS_ADDRESS,
       createdAt: new Date().toISOString()
@@ -163,8 +164,8 @@ async function main() {
   console.log();
   console.log('Next steps:');
   console.log('1. Copy .permission-account.json to secure storage');
-  console.log('2. At runtime, use deserializePermissionAccount() with VERIFIER_PRIVKEY');
-  console.log('3. UserOps will be signed by verifier but executed from user\'s Kernel');
+  console.log('2. At runtime, use deserializePermissionAccount() with ATTESTER_PRIVKEY');
+  console.log('3. UserOps will be signed by the attester but executed from user\'s Kernel');
 }
 
 main().catch(console.error);

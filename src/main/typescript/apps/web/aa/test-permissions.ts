@@ -8,15 +8,15 @@ import { baseSepolia } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 
 // Load from secrets
-const VERIFIER_PRIVKEY = '0xfcb525413bd7c69608771c60e923c7dcb283caa07559f5bbfcffb86ed2bbd637' as Hex;
+const ATTESTER_PRIVKEY = '0xfcb525413bd7c69608771c60e923c7dcb283caa07559f5bbfcffb86ed2bbd637' as Hex;
 const USER_PRIVKEY = '0xbc92aa2df0e5bee540343a9b758f699c1e0d503ecb5314aae46b55280aa3c5c7' as Hex; // cyberstorm-nisto
 
 const EAS_ADDRESS = '0x4200000000000000000000000000000000000021' as Address;
 const CONTRIBUTION_SCHEMA = '0x7425c71616d2959f30296d8e013a8fd23320145b1dfda0718ab0a692087f8782' as Hex;
 
 async function test() {
-  if (!VERIFIER_PRIVKEY || !USER_PRIVKEY) {
-    console.error('Need VERIFIER_PRIVKEY and USER_PRIVKEY env vars');
+  if (!ATTESTER_PRIVKEY || !USER_PRIVKEY) {
+    console.error('Need ATTESTER_PRIVKEY and USER_PRIVKEY env vars');
     process.exit(1);
   }
 
@@ -37,10 +37,10 @@ async function test() {
 
   // Create accounts
   const userAccount = privateKeyToAccount(USER_PRIVKEY);
-  const verifierAccount = privateKeyToAccount(VERIFIER_PRIVKEY);
+  const attesterAccount = privateKeyToAccount(ATTESTER_PRIVKEY);
 
   console.log('User:', userAccount.address);
-  console.log('Verifier:', verifierAccount.address);
+  console.log('Attester:', attesterAccount.address);
 
   // Create user's sudo validator
   const sudoValidator = await signerToEcdsaValidator(publicClient, {
@@ -50,8 +50,8 @@ async function test() {
   });
 
   // Create verifier's modular signer
-  const verifierSigner = await toECDSASigner({
-    signer: verifierAccount
+  const attesterSigner = await toECDSASigner({
+    signer: attesterAccount
   });
 
   // Create call policy
@@ -73,7 +73,7 @@ async function test() {
 
   // Create permission validator
   const permissionValidator = await toPermissionValidator(publicClient, {
-    signer: verifierSigner,
+    signer: attesterSigner,
     policies: [callPolicy],
     entryPoint,
     kernelVersion

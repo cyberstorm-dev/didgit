@@ -3,11 +3,11 @@ pragma solidity ^0.8.23;
 
 /**
  * @title AttestationRelay
- * @notice Allows authorized verifier to sign attestation requests off-chain
- * @dev Users submit verifier-signed attestations, paying gas themselves
+ * @notice Allows authorized attester (verifier role) to sign attestation requests off-chain
+ * @dev Users submit attester-signed attestations, paying gas themselves
  */
 contract AttestationRelay {
-    address public immutable verifier;
+    address public immutable verifier; // attester role
     address public immutable eas;
     
     // EIP-712 domain

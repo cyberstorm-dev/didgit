@@ -60,10 +60,12 @@ function extractAttestationUidFromLog(
   const addrOk = (log.address ?? '').toLowerCase() === easAddress.toLowerCase();
   try {
     if (addrOk) {
-      const parsed = decodeEventLog({ abi: EAS_EVENTS_ABI, data: log.data, topics: log.topics });
-      if (parsed.eventName === 'Attested') {
-        const uid = (parsed.args as any).uid as Hex;
-        if (uid && uid !== '0x' && uid.toLowerCase() !== schemaUid.toLowerCase()) return uid;
+      if (log.topics.length > 0) {
+        const parsed = decodeEventLog({ abi: EAS_EVENTS_ABI, data: log.data, topics: log.topics as [Hex, ...Hex[]] });
+        if (parsed.eventName === 'Attested') {
+          const uid = (parsed.args as any).uid as Hex;
+          if (uid && uid !== '0x' && uid.toLowerCase() !== schemaUid.toLowerCase()) return uid;
+        }
       }
     }
   } catch {}
@@ -180,18 +182,20 @@ export async function attestIdentityBinding(
         if (uid) { attestationUid = uid; break; }
       }
     } catch {}
-    return { txHash, attestationUid };
+    return attestationUid ? { txHash, attestationUid } : { txHash };
   }
 
   // EOA path (not used in MVP)
-  const walletClient = clients?.walletClient ?? (window.ethereum ? createWalletClient({ chain: env.chain, transport: custom(window.ethereum) }) : null);
+  const walletClient = clients?.walletClient ?? (window.ethereum ? createWalletClient({ chain: env.chain, transport: custom(window.ethereum as any) }) : null);
   if (!walletClient) throw new Error('No wallet client available');
   const [account] = await walletClient.getAddresses();
+  if (!account) throw new Error('No account available');
   const hash = await walletClient.writeContract({
     address: env.contract,
     abi: EAS_ABI,
     functionName: 'attest',
     account,
+    chain: env.chain,
     args: [
       {
         schema: args.schemaUid,
@@ -216,5 +220,5 @@ export async function attestIdentityBinding(
     );
     if (uid) { attestationUid = uid; break; }
   }
-  return { txHash: hash, attestationUid };
+  return attestationUid ? { txHash: hash, attestationUid } : { txHash: hash };
 }

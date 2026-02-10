@@ -1,6 +1,6 @@
 import { createPublicClient, http, encodeAbiParameters, parseAbiParameters } from 'viem';
 import { privateKeyToAccount, toAccount, type Address, type Hex } from 'viem/accounts';
-import { baseSepolia } from 'viem/chains';
+import { base, arbitrum } from 'viem/chains';
 import { createKernelAccount } from '@zerodev/sdk';
 import { signerToEcdsaValidator } from '@zerodev/ecdsa-validator';
 import { toPermissionValidator, serializePermissionAccount } from '@zerodev/permissions';
@@ -9,14 +9,53 @@ import { toECDSASigner } from '@zerodev/permissions/signers';
 import { KERNEL_V3_1, getEntryPoint } from '@zerodev/sdk/constants';
 
 type Env = {
-  VERIFIER_PRIVKEY: string;
+  ATTESTER_PRIVKEY?: string;
+  VERIFIER_PRIVKEY?: string; // legacy
   API_KEY: string;
   ALLOWED_ORIGIN?: string;
+  CHAIN?: string;
+  BASE_RPC_URL?: string;
+  ARBITRUM_RPC_URL?: string;
+  BASE_EAS_ADDRESS?: string;
+  ARBITRUM_EAS_ADDRESS?: string;
+  BASE_PERMISSION_SCHEMA_UID?: string;
+  ARBITRUM_PERMISSION_SCHEMA_UID?: string;
 };
 
-const EAS_ADDRESS = '0x4200000000000000000000000000000000000021';
 const ATTEST_SELECTOR = '0xf17325e7';
-const PERMISSION_SCHEMA_UID = '0x6ab56e335e99f78585c89e5535b47c3c90c94c056775dbd28a57490b07e2e9b6';
+
+type ChainKey = 'base' | 'arbitrum';
+
+function envOrThrow(env: Env, key: keyof Env): string {
+  const value = env[key];
+  if (!value) {
+    throw new Error(`Server misconfigured: ${String(key)} missing`);
+  }
+  return value;
+}
+
+function getChainConfig(env: Env) {
+  const key = (env.CHAIN || 'base') as ChainKey;
+  if (key === 'base') {
+    return {
+      name: 'base' as const,
+      chain: base,
+      rpcUrl: env.BASE_RPC_URL || 'https://mainnet.base.org',
+      easAddress: envOrThrow(env, 'BASE_EAS_ADDRESS'),
+      permissionSchemaUid: envOrThrow(env, 'BASE_PERMISSION_SCHEMA_UID')
+    };
+  }
+  if (key === 'arbitrum') {
+    return {
+      name: 'arbitrum' as const,
+      chain: arbitrum,
+      rpcUrl: env.ARBITRUM_RPC_URL || 'https://arb1.arbitrum.io/rpc',
+      easAddress: envOrThrow(env, 'ARBITRUM_EAS_ADDRESS'),
+      permissionSchemaUid: envOrThrow(env, 'ARBITRUM_PERMISSION_SCHEMA_UID')
+    };
+  }
+  throw new Error(`Server misconfigured: Unknown CHAIN ${key}`);
+}
 
 function json(body: unknown, status = 200, origin = '*') {
   return new Response(JSON.stringify(body, null, 2), {
@@ -99,11 +138,13 @@ export default {
     const path = url.pathname;
 
     try {
-      assert(env.VERIFIER_PRIVKEY?.startsWith('0x'), 'Server misconfigured: VERIFIER_PRIVKEY missing');
+      const attesterPrivKey = (env.ATTESTER_PRIVKEY || env.VERIFIER_PRIVKEY || '').trim();
+      assert(attesterPrivKey.startsWith('0x'), 'Server misconfigured: ATTESTER_PRIVKEY missing');
+      const chainConfig = getChainConfig(env);
 
       const publicClient = createPublicClient({
-        chain: baseSepolia,
-        transport: http('https://sepolia.base.org')
+        chain: chainConfig.chain,
+        transport: http(chainConfig.rpcUrl)
       });
 
       const userEOA = (body.userEOA || '').trim() as Address;
@@ -122,23 +163,23 @@ export default {
         );
       }
 
-      const verifierAccount = privateKeyToAccount(env.VERIFIER_PRIVKEY as Hex);
+      const attesterAccount = privateKeyToAccount(attesterPrivKey as Hex);
 
       const callPolicy = toCallPolicy({
         policyVersion: CallPolicyVersion.V0_0_4,
         permissions: [
           {
-            target: EAS_ADDRESS,
+            target: chainConfig.easAddress as Address,
             selector: ATTEST_SELECTOR,
             valueLimit: BigInt(0)
           }
         ]
       });
 
-      const verifierSigner = await toECDSASigner({ signer: verifierAccount });
+      const attesterSigner = await toECDSASigner({ signer: attesterAccount });
 
       const permissionValidator = await toPermissionValidator(publicClient, {
-        signer: verifierSigner,
+        signer: attesterSigner,
         policies: [callPolicy],
         entryPoint,
         kernelVersion: KERNEL_V3_1
@@ -154,10 +195,11 @@ export default {
           {
             typedData,
             kernelAddress: kernelAccount.address,
-            verifier: verifierAccount.address,
-            target: EAS_ADDRESS,
+            attester: attesterAccount.address,
+            verifier: attesterAccount.address,
+            target: chainConfig.easAddress,
             selector: ATTEST_SELECTOR,
-            permissionSchemaUid: PERMISSION_SCHEMA_UID
+            permissionSchemaUid: chainConfig.permissionSchemaUid
           },
           200,
           origin
@@ -179,7 +221,7 @@ export default {
 
         const serialized = await serializePermissionAccount(
           kernelWithPermission,
-          env.VERIFIER_PRIVKEY as Hex,
+          attesterPrivKey as Hex,
           enableSignature
         );
 
@@ -189,8 +231,8 @@ export default {
           parseAbiParameters('address, address, address, bytes4, bytes'),
           [
             kernelWithPermission.address,
-            verifierAccount.address,
-            EAS_ADDRESS,
+            attesterAccount.address,
+            chainConfig.easAddress,
             ATTEST_SELECTOR,
             serializedHex
           ]
@@ -200,10 +242,11 @@ export default {
           {
             permissionData,
             kernelAddress: kernelWithPermission.address,
-            verifier: verifierAccount.address,
-            target: EAS_ADDRESS,
+            attester: attesterAccount.address,
+            verifier: attesterAccount.address,
+            target: chainConfig.easAddress,
             selector: ATTEST_SELECTOR,
-            permissionSchemaUid: PERMISSION_SCHEMA_UID
+            permissionSchemaUid: chainConfig.permissionSchemaUid
           },
           200,
           origin

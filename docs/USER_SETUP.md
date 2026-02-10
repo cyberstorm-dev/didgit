@@ -2,7 +2,7 @@
 
 ## Overview
 
-To enable automated commit attestations that you pay for, you need to authorize the verifier to create attestations on your behalf using your Kernel (smart) wallet.
+To enable automated commit attestations that you pay for, you need to authorize the attester to create attestations on your behalf using your Kernel (smart) wallet.
 
 ## Prerequisites
 
@@ -38,11 +38,11 @@ After setup, verify the permission is enabled:
 
 1. Check your Kernel account on Etherscan
 2. Look for `PermissionConfig` or similar storage slot
-3. Verifier address should be authorized: `0x0CA6A71045C26087F8dCe6d3F93437f31B81C138`
+3. Attester address should be authorized (see `docs/CHAINS.md` for the active chain)
 
 ## What This Enables
 
-Once set up, the verifier service will:
+Once set up, the attester service will:
 - Detect your commits automatically
 - Create attestation transactions
 - Submit them to the network

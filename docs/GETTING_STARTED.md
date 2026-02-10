@@ -14,6 +14,9 @@ Put your GitHub activity on-chain. Build portable, verifiable developer reputati
 - A wallet (we'll create one for you if needed via Web3Auth)
 - ~5 minutes
 
+> [!NOTE]
+> Environment variables and chain configuration are documented in `docs/ENV.md` and `docs/CHAINS.md`.
+
 ---
 
 ## Step 1: Connect Your Wallet
@@ -144,7 +147,7 @@ Yes. EAS supports revocation. You can revoke any attestation you created.
 Base (Coinbase L2). Low fees, high speed, Ethereum security.
 
 **Is this decentralized?**
-The attestations are fully on-chain via EAS. The verification service is currently centralized but can be decentralized via multi-verifier schemes.
+The attestations are fully on-chain via EAS. The verification service is currently centralized but can be decentralized via multi-attester schemes.
 
 ---
 

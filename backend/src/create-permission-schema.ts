@@ -6,10 +6,12 @@
 
 import 'dotenv/config';
 import { createPublicClient, createWalletClient, http, type Hex } from 'viem';
-import { baseSepolia } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
+import { getConfig } from './config';
+import { getAttesterPrivKey } from './env';
 
-const SCHEMA_REGISTRY = '0x4200000000000000000000000000000000000020';
+const ACTIVE = getConfig();
+const SCHEMA_REGISTRY = ACTIVE.schemaRegistryAddress;
 
 const schemaRegistryAbi = [
   {
@@ -25,23 +27,21 @@ const schemaRegistryAbi = [
 ] as const;
 
 async function main() {
-  const VERIFIER_PRIVKEY = process.env.VERIFIER_PRIVKEY as Hex;
-  if (!VERIFIER_PRIVKEY) throw new Error('VERIFIER_PRIVKEY required');
-
-  const account = privateKeyToAccount(VERIFIER_PRIVKEY);
+  const ATTESTER_PRIVKEY = getAttesterPrivKey() as Hex;
+  const account = privateKeyToAccount(ATTESTER_PRIVKEY);
   
   const publicClient = createPublicClient({
-    chain: baseSepolia,
-    transport: http()
+    chain: ACTIVE.chain,
+    transport: http(ACTIVE.rpcUrl)
   });
 
   const walletClient = createWalletClient({
     account,
-    chain: baseSepolia,
-    transport: http()
+    chain: ACTIVE.chain,
+    transport: http(ACTIVE.rpcUrl)
   });
 
-  // Schema: userKernel, verifier, target, selector, serializedPermission
+  // Schema (legacy field name): userKernel, verifier (attester), target, selector, serializedPermission
   const schema = 'address userKernel,address verifier,address target,bytes4 selector,bytes serializedPermission';
 
   console.log('Registering schema:', schema);
@@ -62,7 +62,7 @@ async function main() {
   // The schema UID is in the logs
   // For now, check on basescan or EAS explorer
   console.log('\nCheck EAS explorer for schema UID');
-  console.log('https://base-sepolia.easscan.org/address/' + account.address);
+  console.log(`${ACTIVE.explorers.easAddress}/${account.address}`);
 }
 
 main().catch(console.error);

@@ -4,13 +4,13 @@ pragma solidity ^0.8.23;
 /**
  * @title AllowlistValidator
  * @notice Validator that allows pre-approved addresses to execute specific calls
- * @dev Used for delegated attestations - verifier address is pre-approved
+ * @dev Used for delegated attestations - attester (verifier role) address is pre-approved
  * 
- * This is a Kernel v3 validator that validates UserOps signed by the verifier.
+ * This is a Kernel v3 validator that validates UserOps signed by the attester.
  * Users install this validator on their Kernel account to allow automated attestations.
  */
 contract AllowlistValidator {
-    // Hardcoded verifier address (set at deployment)
+    // Hardcoded verifier address (attester role, set at deployment)
     address public immutable verifier;
     
     // Target contract that can be called (EAS)
@@ -26,7 +26,7 @@ contract AllowlistValidator {
     
     /**
      * @notice Validate a user operation
-     * @dev Checks if the caller is the verifier and the call is to EAS.attest
+     * @dev Checks if the caller is the attester and the call is to EAS.attest
      */
     function validateUserOp(
         UserOperation calldata userOp,
@@ -37,8 +37,8 @@ contract AllowlistValidator {
         // In Kernel v3, callData is the call to execute()
         // We need to decode it to check the target and function
         
-        // Simple validation: check if signature indicates verifier
-        // In practice, verifier would sign with their key
+        // Simple validation: check if signature indicates attester
+        // In practice, attester would sign with their key
         address signer = recoverSigner(userOpHash, userOp.signature);
         
         if (signer != verifier) {
@@ -47,7 +47,7 @@ contract AllowlistValidator {
         
         // Additional check: ensure the call is to EAS.attest
         // This would require parsing userOp.callData
-        // For MVP, we trust that if verifier signed it, it's valid
+        // For MVP, we trust that if attester signed it, it's valid
         
         return SIG_VALIDATION_SUCCESS;
     }
