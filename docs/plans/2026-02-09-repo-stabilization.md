@@ -381,4 +381,4 @@ Summarize changes and any remaining known issues.
 ## Backlog (Not in scope for this plan)
 
 - Paid registration flow.
-- Provision production verifier, attestor, owner, treasurer addresses (per chain) and custody/rotation docs.
+- Provision production attester, owner, treasurer addresses (per chain) and custody/rotation docs.

@@ -24,6 +24,7 @@ import { toCallPolicy, CallPolicyVersion } from '@zerodev/permissions/policies';
 import { toECDSASigner } from '@zerodev/permissions/signers';
 import { KERNEL_V3_1, getEntryPoint } from '@zerodev/sdk/constants';
 import { getConfig } from './config';
+import { getAttesterPrivKey } from './env';
 
 const ACTIVE = getConfig();
 const EAS_ADDRESS = ACTIVE.easAddress as Address;
@@ -55,15 +56,14 @@ const easAbi = [
   }
 ] as const;
 
-const VERIFIER_PRIVKEY = process.env.VERIFIER_PRIVKEY as Hex;
+const ATTESTER_PRIVKEY = getAttesterPrivKey() as Hex;
 const USER_PRIVKEY = process.env.USER_PRIVKEY as Hex;
 const BUNDLER_RPC = process.env.BUNDLER_RPC;
 
-if (!VERIFIER_PRIVKEY) throw new Error('VERIFIER_PRIVKEY required in .env');
 if (!USER_PRIVKEY) throw new Error('USER_PRIVKEY required');
 if (!BUNDLER_RPC) throw new Error('BUNDLER_RPC required in .env');
 
-const verifierAccount = privateKeyToAccount(VERIFIER_PRIVKEY);
+const attesterAccount = privateKeyToAccount(ATTESTER_PRIVKEY);
 const userAccount = privateKeyToAccount(USER_PRIVKEY);
 
 const publicClient = createPublicClient({
@@ -76,7 +76,7 @@ const entryPoint = getEntryPoint('0.7');
 async function main() {
   console.log('\n🔑 Setting up session key permission (stored in EAS)...\n');
   console.log('User EOA:', userAccount.address);
-  console.log('Verifier:', verifierAccount.address);
+  console.log('Attester:', attesterAccount.address);
 
   // Create ECDSA validator for the user
   const ecdsaValidator = await signerToEcdsaValidator(publicClient, {
@@ -112,10 +112,10 @@ async function main() {
     }]
   });
 
-  const verifierSigner = await toECDSASigner({ signer: verifierAccount });
+  const attesterSigner = await toECDSASigner({ signer: attesterAccount });
 
   const permissionValidator = await toPermissionValidator(publicClient, {
-    signer: verifierSigner,
+    signer: attesterSigner,
     policies: [callPolicy],
     entryPoint,
     kernelVersion: KERNEL_V3_1
@@ -132,11 +132,11 @@ async function main() {
   });
 
   // Serialize the permission
-  const serialized = await serializePermissionAccount(kernelWithPermission, VERIFIER_PRIVKEY);
+  const serialized = await serializePermissionAccount(kernelWithPermission, ATTESTER_PRIVKEY);
   console.log('\nPermission serialized, length:', serialized.length);
 
   // Encode permission data for EAS
-  // Schema: address userKernel, address verifier, address target, bytes4 selector, bytes serializedPermission
+  // Schema (legacy field name): address userKernel, address verifier, address target, bytes4 selector, bytes serializedPermission
   // Convert base64 serialized permission to hex bytes
   const serializedHex = ('0x' + Buffer.from(serialized, 'utf-8').toString('hex')) as Hex;
   
@@ -144,7 +144,7 @@ async function main() {
     parseAbiParameters('address, address, address, bytes4, bytes'),
     [
       kernelWithPermission.address,  // userKernel
-      verifierAccount.address,        // verifier
+      attesterAccount.address,        // attester (schema field: verifier)
       EAS_ADDRESS,                    // target
       ATTEST_SELECTOR,                // selector
       serializedHex                   // serializedPermission (utf8->hex)
@@ -190,7 +190,7 @@ async function main() {
   console.log('\n✅ Permission stored in EAS!');
   console.log('Attestation UID:', attestationUid);
   console.log('\nKernel:', kernelWithPermission.address);
-  console.log('Verifier:', verifierAccount.address);
+  console.log('Attester:', attesterAccount.address);
   console.log('Scope: EAS.attest() only');
   console.log('\nThe attestor service will find this permission by querying EAS.');
   console.log('No JSON files needed.');

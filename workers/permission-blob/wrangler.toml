@@ -7,5 +7,5 @@ node_compat = true
 ALLOWED_ORIGIN = "https://didgit.dev"
 
 # Secrets:
-# wrangler secret put VERIFIER_PRIVKEY
+# wrangler secret put ATTESTER_PRIVKEY
 # wrangler secret put API_KEY

@@ -9,7 +9,8 @@ import { toECDSASigner } from '@zerodev/permissions/signers';
 import { KERNEL_V3_1, getEntryPoint } from '@zerodev/sdk/constants';
 
 type Env = {
-  VERIFIER_PRIVKEY: string;
+  ATTESTER_PRIVKEY?: string;
+  VERIFIER_PRIVKEY?: string; // legacy
   API_KEY: string;
   ALLOWED_ORIGIN?: string;
   CHAIN?: string;
@@ -137,7 +138,8 @@ export default {
     const path = url.pathname;
 
     try {
-      assert(env.VERIFIER_PRIVKEY?.startsWith('0x'), 'Server misconfigured: VERIFIER_PRIVKEY missing');
+      const attesterPrivKey = (env.ATTESTER_PRIVKEY || env.VERIFIER_PRIVKEY || '').trim();
+      assert(attesterPrivKey.startsWith('0x'), 'Server misconfigured: ATTESTER_PRIVKEY missing');
       const chainConfig = getChainConfig(env);
 
       const publicClient = createPublicClient({
@@ -161,7 +163,7 @@ export default {
         );
       }
 
-      const verifierAccount = privateKeyToAccount(env.VERIFIER_PRIVKEY as Hex);
+      const attesterAccount = privateKeyToAccount(attesterPrivKey as Hex);
 
       const callPolicy = toCallPolicy({
         policyVersion: CallPolicyVersion.V0_0_4,
@@ -174,10 +176,10 @@ export default {
         ]
       });
 
-      const verifierSigner = await toECDSASigner({ signer: verifierAccount });
+      const attesterSigner = await toECDSASigner({ signer: attesterAccount });
 
       const permissionValidator = await toPermissionValidator(publicClient, {
-        signer: verifierSigner,
+        signer: attesterSigner,
         policies: [callPolicy],
         entryPoint,
         kernelVersion: KERNEL_V3_1
@@ -193,7 +195,8 @@ export default {
           {
             typedData,
             kernelAddress: kernelAccount.address,
-            verifier: verifierAccount.address,
+            attester: attesterAccount.address,
+            verifier: attesterAccount.address,
             target: chainConfig.easAddress,
             selector: ATTEST_SELECTOR,
             permissionSchemaUid: chainConfig.permissionSchemaUid
@@ -218,7 +221,7 @@ export default {
 
         const serialized = await serializePermissionAccount(
           kernelWithPermission,
-          env.VERIFIER_PRIVKEY as Hex,
+          attesterPrivKey as Hex,
           enableSignature
         );
 
@@ -228,7 +231,7 @@ export default {
           parseAbiParameters('address, address, address, bytes4, bytes'),
           [
             kernelWithPermission.address,
-            verifierAccount.address,
+            attesterAccount.address,
             chainConfig.easAddress,
             ATTEST_SELECTOR,
             serializedHex
@@ -239,7 +242,8 @@ export default {
           {
             permissionData,
             kernelAddress: kernelWithPermission.address,
-            verifier: verifierAccount.address,
+            attester: attesterAccount.address,
+            verifier: attesterAccount.address,
             target: chainConfig.easAddress,
             selector: ATTEST_SELECTOR,
             permissionSchemaUid: chainConfig.permissionSchemaUid

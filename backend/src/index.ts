@@ -5,8 +5,11 @@ import { AttestationService } from './service';
 dotenv.config();
 
 // Validate required env vars
-const required = ['VERIFIER_PRIVKEY', 'GITHUB_TOKEN'];
+const required = ['GITHUB_TOKEN'];
 const missing = required.filter(key => !process.env[key]);
+if (!process.env.ATTESTER_PRIVKEY && !process.env.VERIFIER_PRIVKEY) {
+  missing.push('ATTESTER_PRIVKEY');
+}
 
 if (missing.length > 0) {
   console.error('Missing required environment variables:', missing.join(', '));

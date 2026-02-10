@@ -7,7 +7,7 @@ How to add support for GitLab, Bitbucket, Codeberg, and other platforms.
 didgit.dev is designed for multi-platform support. The core protocol is platform-agnostic:
 - `domain` field identifies the platform
 - Schemas are reusable across platforms
-- Only the verifier logic is platform-specific
+- Only the attester logic is platform-specific
 
 ## Architecture
 
@@ -23,7 +23,7 @@ didgit.dev is designed for multi-platform support. The core protocol is platform
 │       └─────────────┴──────┬──────┴─────────────┘           │
 │                            ▼                                │
 │                   ┌──────────────┐                          │
-│                   │   Verifier   │                          │
+│                   │   Attester   │                          │
 │                   │    Core      │                          │
 │                   └──────────────┘                          │
 │                            │                                │
@@ -61,7 +61,7 @@ The proof must:
 2. Be created by the claimed user (OAuth verification)
 3. Contain the signed binding data
 
-### Step 3: Implement Verifier Adapter
+### Step 3: Implement Attester Adapter
 
 ```typescript
 interface PlatformAdapter {

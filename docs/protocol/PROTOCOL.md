@@ -7,7 +7,7 @@ Technical deep-dive into didgit.dev's trust model, schemas, and architecture.
 1. **On-chain truth** — Attestations live on-chain via EAS, not our servers
 2. **Portable identity** — Your reputation follows your wallet, not your account
 3. **Open schemas** — Anyone can read, verify, and build on attestations
-4. **Minimal trust** — Verifier is OSS; run your own if you don't trust ours
+4. **Minimal trust** — Attester is OSS; run your own if you don't trust ours
 
 ## System Architecture
 
@@ -29,7 +29,7 @@ Technical deep-dive into didgit.dev's trust model, schemas, and architecture.
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐     │
-│  │   Verifier  │───▶│  Signature  │───▶│  Contract   │     │
+│  │   Attester  │───▶│  Signature  │───▶│  Contract   │     │
 │  │   Service   │    │   Approval  │    │   Check     │     │
 │  └─────────────┘    └─────────────┘    └─────────────┘     │
 │                                                             │
@@ -50,35 +50,38 @@ Technical deep-dive into didgit.dev's trust model, schemas, and architecture.
 
 ## Trust Model
 
-### Current: Centralized Verifier
+### Current: Centralized Attester
 
 ```
-User ──▶ Verifier (cyberstorm-dev) ──▶ Contract
+User ──▶ Attester (cyberstorm-dev) ──▶ Contract
 ```
 
-- Single trusted verifier signs approvals
+- Single trusted attester signs approvals
 - Simple, low latency
 - Trust anchor: cyberstorm-dev
 
-### Future: Verifier Registry
+> [!NOTE]
+> In `UsernameUniqueResolverV2`, the on-chain role is named `verifier`. In docs and ops, we refer to this key as the **attester**.
+
+### Future: Attester Registry
 
 ```
-User ──▶ Any Registered Verifier ──▶ Contract
-         (Verifier A, B, C...)
+User ──▶ Any Registered Attester ──▶ Contract
+         (Attester A, B, C...)
 ```
 
-- Contract maintains list of approved verifiers
-- Any approved verifier can sign
+- Contract maintains list of approved attesters
+- Any approved attester can sign
 - Decentralized trust, same interface
 
 ### Alternative: Self-Sovereign
 
 ```
-User ──▶ Own Verifier ──▶ Own Resolver Instance
+User ──▶ Own Attester ──▶ Own Resolver Instance
 ```
 
 - Deploy your own resolver
-- Set your own verifier
+- Set your own attester
 - Full control, full responsibility
 
 ## Schemas
@@ -125,17 +128,17 @@ The `UsernameUniqueResolver` enforces:
 
 1. **Uniqueness** — No duplicate username↔wallet bindings
 2. **Authorization** — Only registered repos can be attested
-3. **Verification** — Verifier signature required (v2)
+3. **Verification** — Attester signature required (v2)
 
 ### Key Functions
 
 ```solidity
-// Bind identity (requires verifier approval in v2)
+// Bind identity (requires attester approval in v2)
 function bindIdentity(
     string domain,
     string username,
     address wallet,
-    bytes verifierSig,  // v2
+    bytes attesterSig,  // v2
     uint256 expiry      // v2
 ) external;
 
@@ -163,25 +166,25 @@ function isRepositoryEnabled(
 ```
 1. User signs: "github.com:username"
 2. User creates gist with proof JSON
-3. User requests approval from verifier
-4. Verifier checks:
+3. User requests approval from attester
+4. Attester checks:
    - Gist exists and is public
    - Gist owner matches claimed username
    - Signature in gist matches wallet
-5. Verifier signs: (domain, username, wallet, gistUrl, expiry)
-6. User submits to contract with verifier signature
-7. Contract: ecrecover(sig) == trustedVerifier?
+5. Attester signs: (domain, username, wallet, gistUrl, expiry)
+6. User submits to contract with attester signature
+7. Contract: ecrecover(sig) == trustedAttester?
 8. If valid: attestation created
 ```
 
 ## Security Considerations
 
 ### Replay Protection
-- Verifier signatures include expiry timestamp
+- Attester signatures include expiry timestamp
 - Contract tracks used approvals (nonce or hash)
 
 ### Front-Running
-- Verifier approval is bound to specific wallet
+- Attester approval is bound to specific wallet
 - Can't be used by different address
 
 ### Gist Tampering
@@ -190,7 +193,7 @@ function isRepositoryEnabled(
 - Consider IPFS pinning for immutability
 
 ### Key Compromise
-- Verifier key rotation supported
+- Attester key rotation supported
 - Old signatures invalid after rotation
 - User attestations remain valid (on-chain)
 
@@ -200,7 +203,7 @@ function isRepositoryEnabled(
 
 Adding GitLab, Bitbucket, etc.:
 1. Same schemas, different `domain` field
-2. Platform-specific verifier logic
+2. Platform-specific attester logic
 3. Same resolver contract
 
 See [EXTENDING.md](./EXTENDING.md) for implementation guide.

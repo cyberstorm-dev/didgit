@@ -79,4 +79,4 @@ Top-level commands should fail fast and explain:
 ## Backlog
 
 - Paid registration flow (contract + offchain verification + UI/CLI).
-- Provision production addresses: verifier, attestor, owner, treasurer (per chain) and document custody/rotation.
+- Provision production addresses: attester, owner, treasurer (per chain) and document custody/rotation.

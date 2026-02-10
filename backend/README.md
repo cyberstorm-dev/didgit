@@ -14,13 +14,13 @@ cp .env.example .env
 
 ```bash
 GITHUB_TOKEN=ghp_...           # GitHub token for API access
-VERIFIER_PRIVKEY=0x...         # Verifier wallet (signs UserOps)
+ATTESTER_PRIVKEY=0x...         # Attester wallet (signs permission/UserOps)
 BUNDLER_RPC=https://...        # ZeroDev bundler RPC
 ```
 
 ## User Onboarding (Session Key Setup)
 
-Each user needs a one-time setup to authorize the verifier to attest on their behalf.
+Each user needs a one-time setup to authorize the attester to attest on their behalf.
 
 ### For Agents (have private key access)
 

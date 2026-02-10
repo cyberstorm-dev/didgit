@@ -16,7 +16,7 @@ Commit attestations could number in hundreds or thousands per user. Options cons
 | Approach | Problem |
 |----------|---------|
 | User signs each | UX friction, wallet popup per commit |
-| Verifier pays | Attestations owned by verifier, not user |
+| Attester pays | Attestations owned by attester, not user |
 | Paymaster | Still need user signature |
 | **Session Key** | ✓ User pays, user owns, no signing needed |
 
@@ -32,7 +32,7 @@ Commit attestations could number in hundreds or thousands per user. Options cons
 │   ONE-TIME SETUP (user involved):                               │
 │   ┌─────────────┐    ┌───────────────┐    ┌─────────────────┐   │
 │   │  User EOA   │───▶│ Deploy Kernel │───▶│ Grant Permission │   │
-│   │             │    │ Smart Account │    │ to Verifier      │   │
+│   │             │    │ Smart Account │    │ to Attester      │   │
 │   └─────────────┘    └───────────────┘    └─────────────────┘   │
 │                                                  │               │
 │                                     Serialize permission        │
@@ -44,7 +44,7 @@ Commit attestations could number in hundreds or thousands per user. Options cons
 │   RUNTIME (fully automatic):                                    │
 │   ┌─────────────┐    ┌───────────────┐    ┌─────────────────┐   │
 │   │  Backend    │───▶│ Deserialize   │───▶│ Sign UserOp     │   │
-│   │  (verifier) │    │ Permission    │    │ as Verifier     │   │
+│   │  (attester) │    │ Permission    │    │ as Attester     │   │
 │   └─────────────┘    └───────────────┘    └─────────────────┘   │
 │                                                  │               │
 │                                    Submit to bundler            │
@@ -78,11 +78,11 @@ const callPolicy = toCallPolicy({
 });
 ```
 
-The verifier **can only**:
+The attester **can only**:
 - Call `EAS.attest()` on the specific EAS contract
 - With zero value
 
-The verifier **cannot**:
+The attester **cannot**:
 - Transfer tokens
 - Call any other contract
 - Call any other EAS function
@@ -91,9 +91,9 @@ The verifier **cannot**:
 
 ### User Maintains Control
 
-1. **Ownership**: Attestations are FROM the user's Kernel, not the verifier
+1. **Ownership**: Attestations are FROM the user's Kernel, not the attester
 2. **Revocation**: User can remove the permission at any time via Kernel
-3. **Gas**: User's Kernel balance pays — verifier has no spending authority
+3. **Gas**: User's Kernel balance pays — attester has no spending authority
 4. **Audit**: All attestations visible on-chain under user's address
 
 ### Key Management
@@ -102,17 +102,17 @@ The verifier **cannot**:
 |-----|----------|--------|
 | User's EOA | User only | Setup only, never at runtime |
 | User's Kernel | On-chain | Controlled by user's EOA |
-| Verifier | Backend | Signs UserOps, cannot spend |
+| Attester | Backend | Signs UserOps, cannot spend |
 | Serialized Permission | `.permission-account.json` | Contains enable signature |
 
 ### Attack Vectors Mitigated
 
 | Attack | Mitigation |
 |--------|------------|
-| Verifier drains wallet | Permission scoped to attest() only |
+| Attester drains wallet | Permission scoped to attest() only |
 | Spam attestations | Rate limits on backend |
 | False attestations | GitHub API validation required |
-| Verifier key leak | User revokes permission |
+| Attester key leak | User revokes permission |
 
 ## Setup Flow
 
@@ -126,7 +126,7 @@ ZeroDev Kernel v3.1 smart account with ECDSA validator.
 ```typescript
 // One-time setup with USER_PRIVKEY
 const permissionValidator = await toPermissionValidator(publicClient, {
-  signer: verifierSigner,
+  signer: attesterSigner,
   policies: [callPolicy],
   entryPoint,
   kernelVersion: KERNEL_V3_1
@@ -144,7 +144,7 @@ const kernelWithPermission = await createKernelAccount(publicClient, {
 // Serialize for runtime use
 const serialized = await serializePermissionAccount(
   kernelWithPermission, 
-  VERIFIER_PRIVKEY
+  ATTESTER_PRIVKEY
 );
 ```
 
@@ -222,23 +222,23 @@ RefUID: Points to user's identity attestation
 
 ## Comparison: Old vs New
 
-| Aspect | Verifier Pays (v0.1) | Session Key (v0.2) |
+| Aspect | Attester Pays (v0.1) | Session Key (v0.2) |
 |--------|---------------------|-------------------|
-| Gas payer | Verifier | User's Kernel |
-| Attestation owner | Verifier | User |
+| Gas payer | Attester | User's Kernel |
+| Attestation owner | Attester | User |
 | User control | None | Full (can revoke) |
-| Runtime key needed | Verifier only | Verifier only |
-| Trust model | Trust verifier | Cryptographic scope |
+| Runtime key needed | Attester only | Attester only |
+| Trust model | Trust attester | Cryptographic scope |
 
 ## FAQ
 
 **Q: What if the user's Kernel runs out of ETH?**
 A: Attestations fail with "insufficient balance". User needs to fund their Kernel.
 
-**Q: Can the verifier steal funds?**
+**Q: Can the attester steal funds?**
 A: No. Permission is scoped to `attest()` only with zero value.
 
-**Q: What if the verifier key is compromised?**
+**Q: What if the attester key is compromised?**
 A: User revokes the permission. Worst case: spam attestations (annoying, not harmful).
 
 **Q: Can users attest their own commits?**

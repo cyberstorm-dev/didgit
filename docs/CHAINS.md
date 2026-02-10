@@ -17,7 +17,7 @@ Default chain is **Base mainnet**. Override with `CHAIN=arbitrum`.
   - `repoGlobs`: **TBD** (`BASE_REPO_GLOBS_SCHEMA_UID`)
 - Roles (Base mainnet):
   - `owner`: `0xd04FC7D728AA0052dFB2A9C2D1251fdbe59a4f0b`
-  - `verifier` (attester): `0xD1c0CC69E0D8fF131D2775E2B541df1541092E3a`
+  - `attester` (on-chain role name: `verifier`): `0xD1c0CC69E0D8fF131D2775E2B541df1541092E3a`
   - `treasury`: `0xB7ec37267f8a6Bb08124653CE500B916d284Dae2`
 - Explorers:
   - BaseScan: `https://basescan.org`

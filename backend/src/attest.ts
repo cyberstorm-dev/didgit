@@ -1,6 +1,7 @@
 import { createPublicClient, http, type Address, type Hex, parseAbi, encodeFunctionData, encodeAbiParameters, parseAbiParameters } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { getConfig } from './config';
+import { getAttesterPrivKey } from './env';
 
 const ACTIVE = getConfig();
 const EAS_ADDRESS = ACTIVE.easAddress as Address;
@@ -22,11 +23,10 @@ export interface AttestCommitRequest {
 
 export async function attestCommit(req: AttestCommitRequest): Promise<{ success: boolean; attestationUid?: Hex; txHash?: Hex; error?: string }> {
   try {
-    const VERIFIER_PRIVKEY = process.env.VERIFIER_PRIVKEY as Hex;
-    if (!VERIFIER_PRIVKEY) throw new Error('VERIFIER_PRIVKEY not set');
+    const ATTESTER_PRIVKEY = getAttesterPrivKey() as Hex;
 
-    const verifierAccount = privateKeyToAccount(VERIFIER_PRIVKEY);
-    console.log('[attest] Verifier:', verifierAccount.address);
+    const attesterAccount = privateKeyToAccount(ATTESTER_PRIVKEY);
+    console.log('[attest] Attester:', attesterAccount.address);
     console.log('[attest] User wallet:', req.userWalletAddress);
     console.log('[attest] Commit:', req.commitHash.slice(0, 12));
 
@@ -68,13 +68,13 @@ export async function attestCommit(req: AttestCommitRequest): Promise<{ success:
       refUID: attestationRequest.data.refUID
     });
 
-    // MVP: Verifier calls EAS directly (verifier pays gas)
+    // MVP: Attester calls EAS directly (attester pays gas)
     // TODO: Create UserOp for user's wallet once AllowlistValidator is deployed
     const { createWalletClient } = await import('viem');
     const { http: httpTransport } = await import('viem');
 
     const walletClient = createWalletClient({
-      account: verifierAccount,
+      account: attesterAccount,
       chain: ACTIVE.chain,
       transport: httpTransport(ACTIVE.rpcUrl)
     });

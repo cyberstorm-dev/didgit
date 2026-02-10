@@ -88,7 +88,7 @@ User creates gist → User submits attestation → Contract records binding
 
 ### Enhanced Model (In Progress)
 
-User creates gist → **Verifier service checks gist** → **Verifier signs approval** → User submits with verifier signature → Contract checks `ecrecover == trustedVerifier`
+User creates gist → **Attester service checks gist** → **Attester signs approval** → User submits with attester signature → Contract checks `ecrecover == trustedAttester`
 
 This adds:
 - Server-side verification that the gist exists and contains valid data

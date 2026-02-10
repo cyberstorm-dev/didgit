@@ -2,6 +2,7 @@ import { createPublicClient, http, type Address, type Hex, parseAbi } from 'viem
 import { getRecentCommits, getRecentUserPushCommits, matchCommitToGitHubUser, listOrgRepos, listUserRepos, type CommitInfo } from './github';
 import { attestCommitWithSession, type SessionConfig } from './attest-with-session';
 import { getConfig } from './config';
+import { getAttesterPrivKey } from './env';
 import { parseRepoGlobsDecodedJson } from './repo-globs';
 import { fetchRecentAttestedCommits } from './contributions';
 import { resolveRepoGlobs } from './repo-watch';
@@ -87,17 +88,17 @@ export class AttestationService {
     for (const att of attestations) {
       try {
         const data = JSON.parse(att.decodedDataJson);
-        // Schema: address userKernel, address verifier, address target, bytes4 selector, bytes serializedPermission
+        // Schema (legacy field name): address userKernel, address verifier, address target, bytes4 selector, bytes serializedPermission
         const userKernel = data[0]?.value?.value?.toLowerCase() as Address;
-        const verifier = data[1]?.value?.value?.toLowerCase();
+        const attester = data[1]?.value?.value?.toLowerCase();
         const serializedHex = data[4]?.value?.value as string; // hex-encoded UTF-8
         
         if (userKernel && serializedHex) {
-          // Only load permissions for our verifier
+          // Only load permissions for our attester
           const { privateKeyToAccount } = await import('viem/accounts');
-          const ourVerifier = privateKeyToAccount(process.env.VERIFIER_PRIVKEY as `0x${string}`).address.toLowerCase();
+          const ourAttester = privateKeyToAccount(getAttesterPrivKey() as `0x${string}`).address.toLowerCase();
           
-          if (verifier === ourVerifier) {
+          if (attester === ourAttester) {
             if (this.permissionConfigs.has(userKernel)) {
               continue;
             }
@@ -274,11 +275,9 @@ export class AttestationService {
         continue;
       }
 
-      const VERIFIER_PRIVKEY = process.env.VERIFIER_PRIVKEY as Hex;
+      const ATTESTER_PRIVKEY = getAttesterPrivKey() as Hex;
       const BUNDLER_RPC = process.env.BUNDLER_RPC;
-      if (!VERIFIER_PRIVKEY || !BUNDLER_RPC) {
-        throw new Error('VERIFIER_PRIVKEY and BUNDLER_RPC required for session attestation');
-      }
+      if (!BUNDLER_RPC) throw new Error('BUNDLER_RPC required for session attestation');
 
       const result = await attestCommitWithSession(
         {
@@ -292,7 +291,7 @@ export class AttestationService {
         },
         {
           serializedAccount: serializedPermission,
-          verifierPrivKey: VERIFIER_PRIVKEY,
+          attesterPrivKey: ATTESTER_PRIVKEY,
           bundlerRpc: BUNDLER_RPC
         }
       );

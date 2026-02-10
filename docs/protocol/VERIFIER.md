@@ -1,6 +1,6 @@
-# Running Your Own Verifier
+# Running Your Own Attester
 
-How to deploy and operate a didgit.dev verifier for your organization.
+How to deploy and operate a didgit.dev attester for your organization.
 
 ## Why Run Your Own?
 
@@ -17,7 +17,7 @@ How to deploy and operate a didgit.dev verifier for your organization.
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐  │
-│  │   Verifier   │───▶│    Signer    │───▶│   Your App   │  │
+│  │   Attester   │───▶│    Signer    │───▶│   Your App   │  │
 │  │   Service    │    │   (HSM/KMS)  │    │              │  │
 │  └──────────────┘    └──────────────┘    └──────────────┘  │
 │         │                                       │           │
@@ -34,7 +34,7 @@ How to deploy and operate a didgit.dev verifier for your organization.
 
 ### Step 1: Deploy Resolver Contract
 
-Deploy your own `UsernameUniqueResolver` instance:
+Deploy your own `UsernameUniqueResolverV2` instance:
 
 ```bash
 # Clone the repo
@@ -42,26 +42,26 @@ git clone https://github.com/cyberstorm-dev/didgit
 cd didgit/src/main/solidity
 
 # Deploy (using Foundry)
-forge create src/UsernameUniqueResolver.sol:UsernameUniqueResolver \
+forge create src/UsernameUniqueResolverV2.sol:UsernameUniqueResolverV2 \
   --rpc-url $RPC_URL \
   --private-key $DEPLOYER_KEY
 ```
 
-### Step 2: Configure Verifier
+### Step 2: Configure Attester
 
-Set your verifier address:
+Set your attester address:
 
 ```typescript
 // After deployment
-const resolver = new UsernameUniqueResolver(resolverAddress);
-await resolver.setVerifier(verifierAddress);
+const resolver = new UsernameUniqueResolverV2(resolverAddress);
+await resolver.setVerifier(attesterAddress); // on-chain role is named "verifier"
 ```
 
-### Step 3: Run Verifier Service
+### Step 3: Run Attester Service
 
 ```typescript
 import express from 'express';
-import { verifyGistProof, signApproval } from './verifier';
+import { verifyGistProof, signApproval } from './attester';
 
 const app = express();
 
@@ -101,7 +101,7 @@ app.listen(3000);
 
 ### Step 4: Secure the Signing Key
 
-**Never** store the verifier private key in code or env vars.
+**Never** store the attester private key in code or env vars.
 
 Options:
 - **AWS KMS** — Key never leaves HSM
@@ -117,7 +117,7 @@ const kms = new KMSClient({ region: 'us-east-1' });
 
 async function signApproval(message: Buffer): Promise<Buffer> {
   const command = new SignCommand({
-    KeyId: 'alias/didgit-verifier',
+    KeyId: 'alias/didgit-attester',
     Message: message,
     MessageType: 'RAW',
     SigningAlgorithm: 'ECDSA_SHA_256'
@@ -134,7 +134,7 @@ async function signApproval(message: Buffer): Promise<Buffer> {
 
 ```bash
 # Required
-VERIFIER_KEY_ID=alias/didgit-verifier  # KMS key alias
+ATTESTER_KEY_ID=alias/didgit-attester  # KMS key alias
 RESOLVER_ADDRESS=0x...                  # Your resolver contract
 RPC_URL=https://...                     # Base RPC endpoint
 
@@ -209,7 +209,7 @@ Set up alerts for:
 
 ## Security Checklist
 
-- [ ] Verifier key in HSM/KMS (not in code/env)
+- [ ] Attester key in HSM/KMS (not in code/env)
 - [ ] HTTPS only (no plaintext)
 - [ ] Rate limiting enabled
 - [ ] Input validation on all fields
@@ -219,7 +219,7 @@ Set up alerts for:
 
 ## Upgrading
 
-When updating the verifier:
+When updating the attester:
 
 1. Deploy new version alongside old
 2. Test with synthetic traffic

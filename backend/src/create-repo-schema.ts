@@ -1,11 +1,12 @@
 import { createPublicClient, createWalletClient, http, parseAbi, type Address, type Hex, encodeAbiParameters, parseAbiParameters } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { getConfig } from './config';
+import { getAttesterPrivKey } from './env';
 
 const ACTIVE = getConfig();
 const SCHEMA_REGISTRY = ACTIVE.schemaRegistryAddress as Address;
 const EAS = ACTIVE.easAddress as Address;
-const VERIFIER_KEY = process.env.VERIFIER_PRIVKEY as Hex;
+const ATTESTER_KEY = getAttesterPrivKey() as Hex;
 
 // Nisto's identity attestation UID
 const NISTO_IDENTITY_UID = '0x90687e9e96de20f386d72c9d84b5c7a641a8476da58a77e610e2a1a1a5769cdf' as Hex;
@@ -19,7 +20,7 @@ const easAbi = parseAbi([
 ]);
 
 async function main() {
-  const account = privateKeyToAccount(VERIFIER_KEY);
+  const account = privateKeyToAccount(ATTESTER_KEY);
   
   const publicClient = createPublicClient({
     chain: ACTIVE.chain,

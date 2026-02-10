@@ -2,7 +2,7 @@
  * Attest commits using session key (user pays gas)
  * 
  * Uses the serialized permission account from setup-session-key.ts
- * Requires only VERIFIER_PRIVKEY at runtime - no user private key.
+ * Requires only ATTESTER_PRIVKEY at runtime - no user private key.
  * 
  * User's Kernel pays gas, attestation comes FROM user's Kernel address.
  */
@@ -38,7 +38,7 @@ export interface AttestCommitRequest {
 
 export interface SessionConfig {
   serializedAccount: string;
-  verifierPrivKey: Hex;
+  attesterPrivKey: Hex;
   bundlerRpc: string;
 }
 
@@ -165,10 +165,10 @@ export async function attestCommitWithSession(
 
 // Test if run directly
 async function main() {
-  const VERIFIER_PRIVKEY = process.env.VERIFIER_PRIVKEY as Hex;
+  const ATTESTER_PRIVKEY = (process.env.ATTESTER_PRIVKEY || process.env.VERIFIER_PRIVKEY) as Hex;
   const BUNDLER_RPC = process.env.BUNDLER_RPC;
   
-  if (!VERIFIER_PRIVKEY) throw new Error('VERIFIER_PRIVKEY required');
+  if (!ATTESTER_PRIVKEY) throw new Error('ATTESTER_PRIVKEY required');
   if (!BUNDLER_RPC) throw new Error('BUNDLER_RPC required');
 
   // Load permission account
@@ -177,7 +177,7 @@ async function main() {
 
   console.log('[test] Testing session key attestation...');
   console.log('[test] Kernel:', permissionData.kernelAddress);
-  console.log('[test] Verifier:', permissionData.verifier);
+  console.log('[test] Attester:', permissionData.attester || permissionData.verifier);
 
   // Test attestation
   const result = await attestCommitWithSession(
@@ -192,7 +192,7 @@ async function main() {
     },
     {
       serializedAccount: permissionData.serialized,
-      verifierPrivKey: VERIFIER_PRIVKEY,
+      attesterPrivKey: ATTESTER_PRIVKEY,
       bundlerRpc: BUNDLER_RPC
     }
   );

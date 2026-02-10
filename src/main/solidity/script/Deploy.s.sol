@@ -22,7 +22,7 @@ contract Deploy is Script {
         // Get EAS configuration from environment
         address easAddress = vm.envOr("EAS_ADDRESS", address(0x4200000000000000000000000000000000000021)); // Base mainnet default
         bytes32 schemaUid = vm.envOr("EAS_SCHEMA_UID", bytes32(0));
-        address verifier = vm.envAddress("VERIFIER_ADDRESS");
+        address verifier = vm.envOr("ATTESTER_ADDRESS", vm.envAddress("VERIFIER_ADDRESS"));
         address treasury = vm.envAddress("TREASURY_ADDRESS");
         address owner = vm.envOr("OWNER_ADDRESS", address(0));
 
@@ -30,7 +30,7 @@ contract Deploy is Script {
         console.log("Deployer balance:", deployer.balance);
         console.log("EAS Address:", easAddress);
         console.log("Schema UID:", vm.toString(schemaUid));
-        console.log("Verifier:", verifier);
+        console.log("Attester (verifier role):", verifier);
         console.log("Treasury:", treasury);
 
         vm.startBroadcast(deployerPrivateKey);

@@ -147,7 +147,7 @@ Yes. EAS supports revocation. You can revoke any attestation you created.
 Base (Coinbase L2). Low fees, high speed, Ethereum security.
 
 **Is this decentralized?**
-The attestations are fully on-chain via EAS. The verification service is currently centralized but can be decentralized via multi-verifier schemes.
+The attestations are fully on-chain via EAS. The verification service is currently centralized but can be decentralized via multi-attester schemes.
 
 ---
 

@@ -4,8 +4,9 @@ This repo uses a small set of environment variables across backend tooling and w
 
 | Variable | Required | Purpose | Used In |
 |---|---|---|---|
-| `GITHUB_TOKEN` | Optional (recommended) | GitHub API auth for higher rate limits | `backend/src/github.ts`, verifier runs |
+| `GITHUB_TOKEN` | Optional (recommended) | GitHub API auth for higher rate limits | `backend/src/github.ts`, attester runs |
 | `PRIVATE_KEY` | Required (attest/permission setup) | Sign attestations and onchain operations | `backend/src/attest-identity.ts`, `backend/src/attest-permission.ts` |
+| `ATTESTER_PRIVKEY` | Required (attester) | Attester key used to sign permission data / UserOps | backend, worker |
 | `CHAIN` | Optional | Select chain config (`base` default, `arbitrum` optional) | `backend/src/config.ts`, worker config, docs |
 | `BASE_RPC_URL` | Optional | Override Base RPC URL | backend/worker |
 | `ARBITRUM_RPC_URL` | Optional | Override Arbitrum RPC URL | backend/worker |
@@ -26,4 +27,4 @@ This repo uses a small set of environment variables across backend tooling and w
 | `WORKER_API_KEY` | Optional | Permission worker API key | `backend/src/permission-setup.ts` |
 
 > [!IMPORTANT]
-> Never commit real private keys. Use `.env` and ensure it is ignored.
+> Never commit real private keys. Use `.env` and ensure it is ignored. `VERIFIER_PRIVKEY` is legacy; prefer `ATTESTER_PRIVKEY`.

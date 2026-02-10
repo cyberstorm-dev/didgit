@@ -25,7 +25,7 @@ Contract addresses, ABIs, and deployment information.
 | Role | Address |
 |------|---------|
 | Owner | `0xd04FC7D728AA0052dFB2A9C2D1251fdbe59a4f0b` |
-| Verifier (attester) | `0xD1c0CC69E0D8fF131D2775E2B541df1541092E3a` |
+| Attester (role name: `verifier`) | `0xD1c0CC69E0D8fF131D2775E2B541df1541092E3a` |
 | Treasury | `0xB7ec37267f8a6Bb08124653CE500B916d284Dae2` |
 
 ## Schema UIDs
