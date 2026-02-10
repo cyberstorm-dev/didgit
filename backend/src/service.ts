@@ -1,4 +1,8 @@
 import { createPublicClient, http, type Address, type Hex, parseAbi } from 'viem';
+import { toAccount } from 'viem/accounts';
+import { createKernelAccount } from '@zerodev/sdk';
+import { signerToEcdsaValidator } from '@zerodev/ecdsa-validator';
+import { KERNEL_V3_1, getEntryPoint } from '@zerodev/sdk/constants';
 import { getRecentCommits, getRecentOwnerPushCommits, matchCommitToGitHubUser, listOrgRepos, listUserRepos, type CommitInfo } from './github';
 import { attestCommitWithSession, type SessionConfig } from './attest-with-session';
 import { getConfig } from './config';
@@ -24,6 +28,30 @@ const resolverAbi = parseAbi([
 const easAbi = parseAbi([
   'event Attested(address indexed recipient, address indexed attester, bytes32 indexed uid, bytes32 schema)'
 ]);
+
+async function computeKernelAddress(publicClient: ReturnType<typeof createPublicClient>, userEOA: Address) {
+  const entryPoint = getEntryPoint('0.7');
+  const dummySigner = toAccount({
+    address: userEOA,
+    async signMessage() { throw new Error('signMessage not supported'); },
+    async signTypedData() { throw new Error('signTypedData not supported'); },
+    async signTransaction() { throw new Error('signTransaction not supported'); }
+  });
+
+  const ecdsaValidator = await signerToEcdsaValidator(publicClient, {
+    signer: dummySigner,
+    entryPoint,
+    kernelVersion: KERNEL_V3_1
+  });
+
+  const kernelAccount = await createKernelAccount(publicClient, {
+    plugins: { sudo: ecdsaValidator },
+    entryPoint,
+    kernelVersion: KERNEL_V3_1
+  });
+
+  return kernelAccount.address as Address;
+}
 
 interface RegisteredUser {
   githubUsername: string;
@@ -175,6 +203,11 @@ export class AttestationService {
       const users: RegisteredUser[] = [];
       const seenUsernames = new Set<string>();
 
+      const publicClient = createPublicClient({
+        chain: ACTIVE.chain,
+        transport: http(ACTIVE.rpcUrl)
+      });
+
       for (const att of identities) {
         try {
           const decoded = JSON.parse(att.decodedDataJson);
@@ -192,10 +225,13 @@ export class AttestationService {
             continue;
           }
 
+          const walletAddress = att.recipient as Address;
+          const kernelAddress = await computeKernelAddress(publicClient, walletAddress);
+
           users.push({
             githubUsername: username,
-            walletAddress: att.recipient as Address,
-            kernelAddress: '0x2Ce0cE887De4D0043324C76472f386dC5d454e96' as Address, // TODO: lookup from registry
+            walletAddress,
+            kernelAddress,
             identityAttestationUid: att.id as Hex,
             repoGlobs
           });
