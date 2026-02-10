@@ -18,13 +18,21 @@ Contract addresses, ABIs, and deployment information.
 |----------|---------|----------|
 | EAS | `0x4200000000000000000000000000000000000021` | [View](https://basescan.org/address/0x4200000000000000000000000000000000000021) |
 | SchemaRegistry | `0x4200000000000000000000000000000000000020` | [View](https://basescan.org/address/0x4200000000000000000000000000000000000020) |
-| UsernameUniqueResolver | *Coming soon* | — |
+| UsernameUniqueResolverV2 | *Coming soon* | — |
+
+**Base Mainnet Roles (V2)**
+
+| Role | Address |
+|------|---------|
+| Owner | `0xd04FC7D728AA0052dFB2A9C2D1251fdbe59a4f0b` |
+| Verifier (attester) | `0xD1c0CC69E0D8fF131D2775E2B541df1541092E3a` |
+| Treasury | `0xB7ec37267f8a6Bb08124653CE500B916d284Dae2` |
 
 ## Schema UIDs
 
 ### Identity Schema
 
-**UID:** `0x6ba0509abc1a1ed41df2cce6cbc7350ea21922dae7fcbc408b54150a40be66af`
+**Base Sepolia UID:** `0x6ba0509abc1a1ed41df2cce6cbc7350ea21922dae7fcbc408b54150a40be66af`
 
 ```
 string domain, string username, address wallet, string message, bytes signature, string proof_url
@@ -34,13 +42,16 @@ string domain, string username, address wallet, string message, bytes signature,
 
 ### Contribution Schema
 
-**UID:** `0x7425c71616d2959f30296d8e013a8fd23320145b1dfda0718ab0a692087f8782`
+**Base Sepolia UID:** `0x7425c71616d2959f30296d8e013a8fd23320145b1dfda0718ab0a692087f8782`
 
 ```
 string repo, string commitHash, string author, string message, uint64 timestamp, bytes32 identityUid
 ```
 
 [View on EAS Explorer](https://base-sepolia.easscan.org/schema/view/0x7425c71616d2959f30296d8e013a8fd23320145b1dfda0718ab0a692087f8782)
+
+> [!IMPORTANT]
+> Mainnet schema UIDs are chain-specific and will differ from Base Sepolia. Update this doc once mainnet schemas are registered.
 
 ## UsernameUniqueResolver ABI
 
