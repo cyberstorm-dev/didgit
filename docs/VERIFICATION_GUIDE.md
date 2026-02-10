@@ -19,7 +19,7 @@ Ask for their GitHub username (e.g., `cyberstorm-nisto`).
 Search for their identity attestation on [EAS Explorer](https://base.easscan.org/):
 
 ```
-Schema: 0x... (Base mainnet identity schema UID)
+Schema: 0x6ba0509abc1a1ed41df2cce6cbc7350ea21922dae7fcbc408b54150a40be66af
 Filter by: decodedDataJson contains "username"
 ```
 
@@ -29,7 +29,7 @@ Or use the GraphQL API:
 query VerifyIdentity($username: String!) {
   attestations(
     where: {
-      schemaId: { equals: "0x...<IDENTITY_SCHEMA_UID>" }
+      schemaId: { equals: "0x6ba0509abc1a1ed41df2cce6cbc7350ea21922dae7fcbc408b54150a40be66af" }
       decodedDataJson: { contains: $username }
       revoked: { equals: false }
     }
@@ -63,7 +63,7 @@ Query contributions linked to their identity:
 query GetContributions($identityUid: String!) {
   attestations(
     where: {
-      schemaId: { equals: "0x...<CONTRIBUTION_SCHEMA_UID>" }
+      schemaId: { equals: "0x7425c71616d2959f30296d8e013a8fd23320145b1dfda0718ab0a692087f8782" }
       refUID: { equals: $identityUid }
       revoked: { equals: false }
     }

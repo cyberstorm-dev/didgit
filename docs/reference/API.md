@@ -11,9 +11,8 @@ Query attestations via EAS GraphQL API.
 ## Schema UIDs
 
 ```typescript
-// Schema UIDs are chain-specific. Replace with your mainnet values.
-const IDENTITY_SCHEMA = '0x...';
-const CONTRIBUTION_SCHEMA = '0x...';
+const IDENTITY_SCHEMA = '0x6ba0509abc1a1ed41df2cce6cbc7350ea21922dae7fcbc408b54150a40be66af';
+const CONTRIBUTION_SCHEMA = '0x7425c71616d2959f30296d8e013a8fd23320145b1dfda0718ab0a692087f8782';
 ```
 
 ## Common Queries

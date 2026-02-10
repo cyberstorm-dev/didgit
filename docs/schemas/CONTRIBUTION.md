@@ -8,7 +8,7 @@ While the primary didgit.dev flow handles **identity binding** (linking GitHub u
 
 ## Schema
 
-**Schema UID (Base mainnet):** `0x...`
+**Schema UID (Base mainnet):** `0x7425c71616d2959f30296d8e013a8fd23320145b1dfda0718ab0a692087f8782`
 
 ```
 string repo,string commitHash,string author,string message,uint64 timestamp,bytes32 identityUid

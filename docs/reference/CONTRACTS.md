@@ -32,23 +32,23 @@ Contract addresses, ABIs, and deployment information.
 
 ### Identity Schema
 
-**Base Sepolia UID:** `0x6ba0509abc1a1ed41df2cce6cbc7350ea21922dae7fcbc408b54150a40be66af`
+**Base Mainnet UID:** `0x6ba0509abc1a1ed41df2cce6cbc7350ea21922dae7fcbc408b54150a40be66af`
 
 ```
 string domain, string username, address wallet, string message, bytes signature, string proof_url
 ```
 
-[View on EAS Explorer](https://base-sepolia.easscan.org/schema/view/0x6ba0509abc1a1ed41df2cce6cbc7350ea21922dae7fcbc408b54150a40be66af)
+[View on EAS Explorer](https://base.easscan.org/schema/view/0x6ba0509abc1a1ed41df2cce6cbc7350ea21922dae7fcbc408b54150a40be66af)
 
 ### Contribution Schema
 
-**Base Sepolia UID:** `0x7425c71616d2959f30296d8e013a8fd23320145b1dfda0718ab0a692087f8782`
+**Base Mainnet UID:** `0x7425c71616d2959f30296d8e013a8fd23320145b1dfda0718ab0a692087f8782`
 
 ```
 string repo, string commitHash, string author, string message, uint64 timestamp, bytes32 identityUid
 ```
 
-[View on EAS Explorer](https://base-sepolia.easscan.org/schema/view/0x7425c71616d2959f30296d8e013a8fd23320145b1dfda0718ab0a692087f8782)
+[View on EAS Explorer](https://base.easscan.org/schema/view/0x7425c71616d2959f30296d8e013a8fd23320145b1dfda0718ab0a692087f8782)
 
 > [!IMPORTANT]
 > Mainnet schema UIDs are chain-specific and will differ from Base Sepolia. Update this doc once mainnet schemas are registered.

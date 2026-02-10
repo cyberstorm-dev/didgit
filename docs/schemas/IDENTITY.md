@@ -8,7 +8,7 @@ The identity attestation is the **cornerstone** of didgit.dev — it creates a v
 
 ## Schema
 
-**Schema UID (Base mainnet):** `0x...`
+**Schema UID (Base mainnet):** `0x6ba0509abc1a1ed41df2cce6cbc7350ea21922dae7fcbc408b54150a40be66af`
 
 ```
 string domain,string username,address wallet,string message,bytes signature,string proof_url
@@ -53,7 +53,7 @@ A public GitHub gist is created containing:
   "message": "github.com:cyberstorm-nisto",
   "signature": "0x...",
   "chain_id": 8453,
-  "schema_uid": "0x...<IDENTITY_SCHEMA_UID>"
+  "schema_uid": "0x6ba0509abc1a1ed41df2cce6cbc7350ea21922dae7fcbc408b54150a40be66af"
 }
 ```
 
