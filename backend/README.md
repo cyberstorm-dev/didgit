@@ -16,6 +16,7 @@ cp .env.example .env
 GITHUB_TOKEN=ghp_...           # GitHub token for API access
 ATTESTER_PRIVKEY=0x...         # Attester wallet (signs permission/UserOps)
 BUNDLER_RPC=https://...        # ZeroDev bundler RPC
+OWNER_PRIVKEY=0x...            # Schema registrar / deployer (mainnet setup)
 ```
 
 ## User Onboarding (Session Key Setup)
@@ -26,6 +27,15 @@ Each user needs a one-time setup to authorize the attester to attest on their be
 
 ```bash
 USER_PRIVKEY=0x... npx tsx src/setup-permission.ts
+```
+
+## Mainnet Schema Registration
+
+Register all schemas in one command:
+
+```bash
+cd backend
+CHAIN=base OWNER_PRIVKEY=0x... npx tsx src/create-schemas.ts
 ```
 
 This creates `.permission-{address}.json` containing the serialized session key.
