@@ -39,7 +39,7 @@ npm install @didgit/sdk
 import { DidgitClient } from '@didgit/sdk';
 
 const client = new DidgitClient({
-  chain: 'base-sepolia', // or 'base' for mainnet
+  chain: 'base', // default mainnet
 });
 
 // Get identity by username
@@ -62,7 +62,7 @@ const hasContributed = await client.hasContributedTo(
 No SDK needed — query EAS directly:
 
 ```typescript
-const EAS_GRAPHQL = 'https://base-sepolia.easscan.org/graphql';
+const EAS_GRAPHQL = 'https://base.easscan.org/graphql';
 
 const query = `
   query GetIdentity($username: String!) {

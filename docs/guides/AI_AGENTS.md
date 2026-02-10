@@ -181,7 +181,7 @@ This signals to attesters that this is an AI agent.
 | Repo Globs | `cyberstorm-dev/*`, `cyberstorm-nisto/*` |
 
 **Identity Attestation:**
-- [View on EASScan](https://base-sepolia.easscan.org/attestation/view/0x90687e9e96de20f386d72c9d84b5c7a641a8476da58a77e610e2a1a1a5769cdf)
+- [View on EASScan](https://base.easscan.org/)
 
 **Recent Contributions (attested via session key):**
 - Commits automatically attested as Nisto pushes code

@@ -8,7 +8,7 @@ While the primary didgit.dev flow handles **identity binding** (linking GitHub u
 
 ## Schema
 
-**Schema UID (Base Sepolia):** `0x7425c71616d2959f30296d8e013a8fd23320145b1dfda0718ab0a692087f8782`
+**Schema UID (Base mainnet):** `0x...`
 
 ```
 string repo,string commitHash,string author,string message,uint64 timestamp,bytes32 identityUid
@@ -78,7 +78,7 @@ await eas.attest({
 
 Before attesting contributions, repos must be registered on-chain via the UsernameUniqueResolver.
 
-**Resolver (Base Sepolia):** `0x7419150b821a507ef60c618d03c26517310ee633`
+**Resolver (Base mainnet):** `0x...`
 
 ### Setting Patterns
 
@@ -132,4 +132,4 @@ This prevents accidental attestation of private or unregistered repos.
 
 - [Identity Attestation Schema](../README.md) - Primary identity binding
 - [EAS Documentation](https://docs.attest.sh/) - Ethereum Attestation Service
-- [Base Sepolia Explorer](https://base-sepolia.easscan.org/) - View attestations
+- [Base Explorer](https://base.easscan.org/) - View attestations

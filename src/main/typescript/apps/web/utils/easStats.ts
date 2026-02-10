@@ -24,10 +24,8 @@ export function getEasGraphqlEndpoint(chainId: number): string {
   switch (chainId) {
     case 8453:
       return 'https://base.easscan.org/graphql';
-    case 84532:
-      return 'https://base-sepolia.easscan.org/graphql';
     default:
-      return 'https://base-sepolia.easscan.org/graphql';
+      return 'https://base.easscan.org/graphql';
   }
 }
 

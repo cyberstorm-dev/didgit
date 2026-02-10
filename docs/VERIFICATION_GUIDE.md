@@ -16,10 +16,10 @@ Ask for their GitHub username (e.g., `cyberstorm-nisto`).
 
 ### 2. Check Identity Attestation
 
-Search for their identity attestation on [EAS Explorer](https://base-sepolia.easscan.org/):
+Search for their identity attestation on [EAS Explorer](https://base.easscan.org/):
 
 ```
-Schema: 0x6ba0509abc1a1ed41df2cce6cbc7350ea21922dae7fcbc408b54150a40be66af
+Schema: 0x... (Base mainnet identity schema UID)
 Filter by: decodedDataJson contains "username"
 ```
 
@@ -29,7 +29,7 @@ Or use the GraphQL API:
 query VerifyIdentity($username: String!) {
   attestations(
     where: {
-      schemaId: { equals: "0x6ba0509abc1a1ed41df2cce6cbc7350ea21922dae7fcbc408b54150a40be66af" }
+      schemaId: { equals: "0x...<IDENTITY_SCHEMA_UID>" }
       decodedDataJson: { contains: $username }
       revoked: { equals: false }
     }
@@ -63,7 +63,7 @@ Query contributions linked to their identity:
 query GetContributions($identityUid: String!) {
   attestations(
     where: {
-      schemaId: { equals: "0x7425c71616d2959f30296d8e013a8fd23320145b1dfda0718ab0a692087f8782" }
+      schemaId: { equals: "0x...<CONTRIBUTION_SCHEMA_UID>" }
       refUID: { equals: $identityUid }
       revoked: { equals: false }
     }
@@ -94,10 +94,10 @@ Each contribution shows:
 
 ```typescript
 import { createPublicClient, http } from 'viem';
-import { baseSepolia } from 'viem/chains';
+import { base } from 'viem/chains';
 
 const client = createPublicClient({
-  chain: baseSepolia,
+  chain: base,
   transport: http()
 });
 

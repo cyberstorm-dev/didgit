@@ -21,13 +21,11 @@ An agent can handle most of this for you, walking you through only the parts tha
 1. **A wallet address** — just the address, not the seed phrase
 2. **Ability to sign a message** — your wallet app can do this
 3. **GitHub Personal Access Token** — with `gist` scope (for proof creation)
-4. **~$0.01 Base Sepolia ETH** — for gas
+4. **~$0.01 Base ETH** — for gas
 
-### Getting Base Sepolia ETH
+### Getting Base ETH
 
-Free from the faucet: https://www.coinbase.com/faucets/base-sepolia-faucet
-
-Enter your wallet address, solve captcha, receive testnet ETH.
+Fund your wallet on Base mainnet (bridge or exchange). Attestations are cheap, but you still need gas.
 
 ### Creating a GitHub Token
 
@@ -73,14 +71,14 @@ Give your agent the Personal Access Token you created. They'll use it to:
 
 Your agent will:
 1. Create the proof gist on your GitHub
-2. Submit the EAS attestation on Base Sepolia
+2. Submit the EAS attestation on Base
 3. Send you the confirmation link
 
 ### Step 5: Done!
 
 View your attestation at:
 ```
-https://base-sepolia.easscan.org/address/YOUR_WALLET_ADDRESS
+https://base.easscan.org/address/YOUR_WALLET_ADDRESS
 ```
 
 Your GitHub username is now cryptographically linked to your wallet. This proof is:
@@ -108,7 +106,7 @@ Use the web app at didgit.dev, or find an agent that supports this skill.
 Point them to: `https://github.com/cyberstorm-dev/didgit/tree/main/skills/didgit-onboarding`
 
 **"Transaction failed"**
-Probably need more gas. Get ETH from the Base Sepolia faucet.
+Probably need more gas. Fund your wallet on Base mainnet.
 
 **"Username already taken"**
 Each GitHub username can only link to one wallet. If you previously registered with a different wallet, you'll need to revoke that attestation first.

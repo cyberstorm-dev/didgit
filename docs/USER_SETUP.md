@@ -19,7 +19,7 @@ To enable automated commit attestations that you pay for, you need to authorize 
    - Your Kernel address is the recipient address
 
 2. **Go to Etherscan**
-   - Navigate to: https://sepolia.basescan.org/address/YOUR_KERNEL_ADDRESS#writeProxyContract
+   - Navigate to: https://basescan.org/address/YOUR_KERNEL_ADDRESS#writeProxyContract
    - Connect your wallet (the one that controls the Kernel account)
 
 3. **Enable Permission Validator**
