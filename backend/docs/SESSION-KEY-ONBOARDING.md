@@ -66,7 +66,7 @@ The attester CANNOT:
 ```
 ATTESTER_PRIVKEY=0xfcb525413bd7c69608771c60e923c7dcb283caa07559f5bbfcffb86ed2bbd637
 GITHUB_TOKEN=<your_github_token>
-BUNDLER_RPC=https://rpc.zerodev.app/api/v3/aa40f236-4eff-41e1-8737-ab95ab7e1850/chain/84532
+BUNDLER_RPC=https://rpc.zerodev.app/api/v3/aa40f236-4eff-41e1-8737-ab95ab7e1850/chain/8453
 USER_PRIVKEY=0x<your EOA privkey>
 ```
 
@@ -90,7 +90,7 @@ This will:
 
 Check your permission at:
 ```
-https://base-sepolia.easscan.org/attestation/view/[UID]
+https://base.easscan.org/attestation/view/[UID]
 ```
 
 You should see:

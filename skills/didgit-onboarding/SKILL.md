@@ -1,9 +1,9 @@
 # didgit.dev Onboarding Skill
 
-Create a verified GitHub <-> wallet identity attestation on Base Sepolia.
+Create a verified GitHub <-> wallet identity attestation on Base mainnet.
 
 Repo: https://github.com/cyberstorm-dev/didgit
-Network: Base Sepolia (testnet)
+Network: Base mainnet
 Time: ~5 minutes
 
 ---
@@ -26,7 +26,7 @@ Use this skill to:
 
 - GitHub account with access to public gists
 - Wallet private key (0x-prefixed) for signing
-- Base Sepolia ETH for gas (~0.01)
+- Base ETH for gas (~0.01)
 - Tooling:
   - Node.js + pnpm (repo deps already installed)
   - Foundry `cast` (or use the ethers.js snippet)
@@ -53,6 +53,17 @@ and then sets up the permission (session key) automatically.
 ```bash
 cd /Users/allenday/src/didgit/backend
 
+# Required chain config (Base mainnet)
+export CHAIN=base
+export BASE_RPC_URL=https://mainnet.base.org
+export BASE_EAS_ADDRESS=0x4200000000000000000000000000000000000021
+export BASE_SCHEMA_REGISTRY_ADDRESS=0x4200000000000000000000000000000000000020
+export BASE_RESOLVER_ADDRESS=0x9A6F993e73E12Deba899c8856D78c7F05b71167A
+export BASE_IDENTITY_SCHEMA_UID=0x6ba0509abc1a1ed41df2cce6cbc7350ea21922dae7fcbc408b54150a40be66af
+export BASE_CONTRIBUTION_SCHEMA_UID=0x7425c71616d2959f30296d8e013a8fd23320145b1dfda0718ab0a692087f8782
+export BASE_PERMISSION_SCHEMA_UID=0x6ab56e335e99f78585c89e5535b47c3c90c94c056775dbd28a57490b07e2e9b6
+export BASE_REPO_GLOBS_SCHEMA_UID=0x79cb78c31678d34847273f605290b2ab56db29a057fdad8facdcc492b9cf2e74
+
 # Full-auto if GITHUB_TOKEN is set (PAT with `gist` scope)
 GITHUB_USERNAME=$GITHUB_USERNAME \
 PRIVATE_KEY=$PRIVATE_KEY \
@@ -67,10 +78,10 @@ then you set `GIST_URL` and rerun the same command.
 > `GITHUB_TOKEN` is optional. If present, full-auto gist creation is used.
 
 > [!IMPORTANT]
-> The script checks your Base Sepolia ETH balance before submitting.
+> The script checks your Base ETH balance before submitting.
 
 > [!NOTE]
-> Use `DIDGIT_CHAIN=base-sepolia` to select a chain (default is `base-sepolia`).
+> The onboarding command reads `backend/.env`. If you don’t want to edit that file, the exports above are sufficient for the current shell session.
 
 ---
 
@@ -99,21 +110,21 @@ The script prints only:
 - `Basescan URL`, `EASscan URL`, `EASscan Address`
 
 Verify:
-- Basescan: https://sepolia.basescan.org/tx/<TX>
-- EASscan: https://base-sepolia.easscan.org/attestation/view/<UID>
-- EASscan by address: https://base-sepolia.easscan.org/address/<WALLET_ADDRESS>
+- Basescan: https://basescan.org/tx/<TX>
+- EASscan: https://base.easscan.org/attestation/view/<UID>
+- EASscan by address: https://base.easscan.org/address/<WALLET_ADDRESS>
 
 ---
 
 ## Automatic Commit Attestations (optional, requires verifier)
 
-This enables a **session key** so the verifier can attest commits on your behalf.
-It requires a pre-signed permission blob from the verifier.
+This enables a **session key** so the attester can attest commits on your behalf.
+It requires a pre-signed permission blob from the attester.
 
 ### Step 5: Fund your Kernel
 
 ```bash
-cast send <KERNEL_ADDRESS> --value 0.01ether --rpc-url https://sepolia.base.org
+cast send <KERNEL_ADDRESS> --value 0.01ether --rpc-url https://mainnet.base.org
 ```
 
 > [!CAUTION]
@@ -121,7 +132,7 @@ cast send <KERNEL_ADDRESS> --value 0.01ether --rpc-url https://sepolia.base.org
 
 ### Step 6: Fetch + attest the permission blob (CLI)
 
-This calls the verifier worker, signs the enable typed data, and attests the permission.
+This calls the attester worker, signs the enable typed data, and attests the permission.
 
 ```bash
 cd /Users/allenday/src/didgit/backend
@@ -166,8 +177,7 @@ The resolver enforces a 1:1 mapping.
 - Old attestations can be revoked, then re-registered
 
 ### Insufficient funds
-You need Base Sepolia ETH. Faucet:
-https://www.coinbase.com/faucets/base-sepolia-faucet
+You need Base ETH. Fund your wallet on Base mainnet (bridge/exchange).
 
 ### Invalid signature
 - Message must be exactly `github.com:username` (lowercase)
@@ -182,13 +192,13 @@ The UsernameUniqueResolver checks:
 
 ---
 
-## Contract Addresses (Base Sepolia)
+## Contract Addresses (Base mainnet)
 
 | Contract | Address |
 |----------|---------|
 | EAS | `0x4200000000000000000000000000000000000021` |
 | Schema Registry | `0x4200000000000000000000000000000000000020` |
-| UsernameUniqueResolver | `0xf20e5d52acf8fc64f5b456580efa3d8e4dcf16c7` |
+| UsernameUniqueResolverV2 (Proxy) | `0x9A6F993e73E12Deba899c8856D78c7F05b71167A` |
 | Identity Schema | `0x6ba0509abc1a1ed41df2cce6cbc7350ea21922dae7fcbc408b54150a40be66af` |
 | Permission Schema | `0x6ab56e335e99f78585c89e5535b47c3c90c94c056775dbd28a57490b07e2e9b6` |
 | Repo Globs Schema | `0x79cb78c31678d34847273f605290b2ab56db29a057fdad8facdcc492b9cf2e74` |

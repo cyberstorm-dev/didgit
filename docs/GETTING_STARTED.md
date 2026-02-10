@@ -1,161 +1,57 @@
 # Getting Started with didgit.dev
 
-Put your GitHub activity on-chain. Build portable, verifiable developer reputation.
+Didgit is an **agent-first** onboarding flow that links a GitHub username to a wallet address using on-chain EAS attestations.
 
-## What You'll Get
+## Quickstart (Recommended)
 
-1. **Identity Attestation** — cryptographic proof linking your GitHub username to your wallet
-2. **Contribution Attestations** — on-chain records of your commits, PRs, and activity
-3. **Portable Reputation** — take your verified history anywhere in web3
+Use the onboarding skill:
 
-## Prerequisites
+- `skills/didgit-onboarding/SKILL.md`
 
-- A GitHub account
-- A wallet (we'll create one for you if needed via Web3Auth)
-- ~5 minutes
+It is the canonical, up-to-date flow for humans and agents.
+
+## What You’ll Need
+
+- A GitHub username
+- A wallet (EOA or smart account)
+- A GitHub Personal Access Token (optional but recommended, `gist` scope)
+- A small amount of Base mainnet ETH for gas
 
 > [!NOTE]
 > Environment variables and chain configuration are documented in `docs/ENV.md` and `docs/CHAINS.md`.
 
----
+## Base Mainnet Exports (Single Session)
 
-## Step 1: Connect Your Wallet
+If you don’t want to edit `backend/.env`, export these before running onboarding:
 
-Go to [didgit.dev](https://didgit.dev) and click **Connect Wallet**.
-
-We use [Web3Auth](https://web3auth.io/) for seamless onboarding:
-- Sign in with Google, GitHub, or email
-- A smart wallet is created automatically (no seed phrase needed)
-- Works on Base (low fees, fast transactions)
-
-Already have a wallet? Connect with MetaMask, WalletConnect, or any EIP-1193 provider.
-
-## Step 2: Connect GitHub
-
-Click **Connect GitHub** and authorize the didgit.dev app.
-
-We request minimal permissions:
-- `read:user` — verify your username
-- `gist` — create your proof gist (public, you control it)
-
-We never access your private repos or commit on your behalf.
-
-## Step 3: Sign Your Identity
-
-Your wallet will prompt you to sign a message:
-
-```
-github.com:your-username
+```bash
+export CHAIN=base
+export BASE_RPC_URL=https://mainnet.base.org
+export BASE_EAS_ADDRESS=0x4200000000000000000000000000000000000021
+export BASE_SCHEMA_REGISTRY_ADDRESS=0x4200000000000000000000000000000000000020
+export BASE_RESOLVER_ADDRESS=0x9A6F993e73E12Deba899c8856D78c7F05b71167A
+export BASE_IDENTITY_SCHEMA_UID=0x6ba0509abc1a1ed41df2cce6cbc7350ea21922dae7fcbc408b54150a40be66af
+export BASE_CONTRIBUTION_SCHEMA_UID=0x7425c71616d2959f30296d8e013a8fd23320145b1dfda0718ab0a692087f8782
+export BASE_PERMISSION_SCHEMA_UID=0x6ab56e335e99f78585c89e5535b47c3c90c94c056775dbd28a57490b07e2e9b6
+export BASE_REPO_GLOBS_SCHEMA_UID=0x79cb78c31678d34847273f605290b2ab56db29a057fdad8facdcc492b9cf2e74
 ```
 
-This signature proves you control both:
-- The GitHub account (via OAuth)
-- The wallet (via cryptographic signature)
+## High-Level Flow
 
-No transaction, no gas — just a signature.
+1. **Sign identity message**: `github.com:<username>`
+2. **Create proof gist** with signature + metadata
+3. **Submit identity attestation** on Base mainnet
+4. **Authorize attester** via permission blob (session key)
+5. **Register repo globs** for commit attestations
 
-## Step 4: Create Your Proof Gist
+## Where to Verify
 
-Click **Create Proof Gist**. This creates a public gist on your GitHub containing:
-
-```json
-{
-  "domain": "github.com",
-  "username": "your-username",
-  "wallet": "0xYourWalletAddress",
-  "message": "github.com:your-username",
-  "signature": "0x...",
-  "chain_id": 8453,
-  "schema_uid": "0x6ba0509..."
-}
-```
-
-This gist serves as:
-- Public proof anyone can verify
-- Backup if EAS is unavailable
-- Your claim to this identity
-
-## Step 5: Submit Attestation
-
-Click **Submit Attestation**. This creates an on-chain record via [EAS](https://attest.sh/) (Ethereum Attestation Service) on Base.
-
-The attestation includes:
-- Your GitHub username
-- Your wallet address
-- Your signature
-- Link to your proof gist
-
-**Cost:** ~$0.01-0.05 in ETH (gas fees on Base are low)
-
-## Step 6: Register Your Repositories
-
-After your identity is attested, register which repos should be tracked.
-
-Options:
-- `*/*` — all your public repos (recommended to start)
-- `your-org/*` — all repos in a specific org
-- `your-org/specific-repo` — just one repo
-
-Only registered repos will have commits attested. This prevents accidental exposure of private work.
-
-## Step 7: Start Building Reputation
-
-That's it! As you commit to registered repos, your contributions are attested on-chain.
-
-Each contribution attestation includes:
-- Repository name
-- Commit hash
-- Commit message
-- Timestamp
-- Link to your identity attestation
-
-View your attestations at [base.easscan.org](https://base.easscan.org/).
-
----
-
-## What's Next?
-
-### For Developers
-- Keep committing — your reputation grows automatically
-- Add more repos as you contribute to new projects
-- Share your attestation profile with potential collaborators
-
-### For Projects
-- Verify contributor history before granting access
-- Build trust with on-chain proof of work
-- Create bounties with verifiable completion criteria
-
-### For DAOs
-- Gate roles by contribution history
-- Weight votes by verified activity
-- Build meritocratic governance
-
----
-
-## FAQ
-
-**Is my code stored on-chain?**
-No. Only metadata (repo name, commit hash, message) is attested. Your code stays on GitHub.
-
-**What about private repos?**
-Only repos you explicitly register are tracked. Private repos are never exposed.
-
-**Can I revoke my attestations?**
-Yes. EAS supports revocation. You can revoke any attestation you created.
-
-**What chain is this on?**
-Base (Coinbase L2). Low fees, high speed, Ethereum security.
-
-**Is this decentralized?**
-The attestations are fully on-chain via EAS. The verification service is currently centralized but can be decentralized via multi-attester schemes.
-
----
+- EAS Explorer: https://base.easscan.org/
 
 ## Need Help?
 
 - [GitHub Issues](https://github.com/cyberstorm-dev/didgit/issues)
 - [Discord](https://discord.gg/cyberstorm)
-- [Twitter](https://twitter.com/didgit_dev)
 
 ---
 

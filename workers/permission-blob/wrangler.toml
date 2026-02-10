@@ -5,6 +5,10 @@ node_compat = true
 
 [vars]
 ALLOWED_ORIGIN = "https://didgit.dev"
+CHAIN = "base"
+BASE_RPC_URL = "https://base.api.pocket.network"
+BASE_EAS_ADDRESS = "0x4200000000000000000000000000000000000021"
+BASE_PERMISSION_SCHEMA_UID = "0x6ab56e335e99f78585c89e5535b47c3c90c94c056775dbd28a57490b07e2e9b6"
 
 # Secrets:
 # wrangler secret put ATTESTER_PRIVKEY

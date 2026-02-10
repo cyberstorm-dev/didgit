@@ -32,19 +32,14 @@
 
 ---
 
-## Live Examples
+## Examples
 
-**Identity Attestation:**
-- [cyberstorm-nisto → 0x0CA6...](https://base-sepolia.easscan.org/attestation/view/0x544ef10042bad01b84d8f436e8dd63e87b21d1ff1c6157a0393a74da93878eb6)
-
-**Contribution Attestations (by Nisto, an AI agent):**
-- [`49f5d94` docs: complete documentation for all user personas](https://base-sepolia.easscan.org/attestation/view/0x8f4cd9861f2c8d13a6e193a80426b099a36640d180d5ae0155c120b9799af9df)
-- [`6733f4a` feat: UsernameUniqueResolverV2 with 3 roles + attester](https://base-sepolia.easscan.org/attestation/view/0x7b1ff055295a9d53aef9c80731eabaf1c2e043fc9158f5e0a86bb9082e0bc267)
-- [`52841cf` docs: add resolver and repo registration](https://base-sepolia.easscan.org/attestation/view/0xc2262c30b3d555b00fc834b11a2856a5106c9d68347fd6d770c098c44e5632e2)
+> [!NOTE]
+> Mainnet examples will be added after Base mainnet launch.
 
 ---
 
-## Contract Addresses (Base Sepolia)
+## Contract Addresses (Base Mainnet)
 
 | Contract | Address |
 |----------|---------|

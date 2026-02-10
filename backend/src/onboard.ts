@@ -40,7 +40,7 @@ function buildGistPayload(input: { githubUsername: string; walletAddress: string
     wallet: input.walletAddress,
     message: `github.com:${input.githubUsername}`,
     signature: input.signature,
-    chain_id: 84532,
+    chain_id: ACTIVE.chainId,
     schema_uid: IDENTITY_SCHEMA
   };
 }

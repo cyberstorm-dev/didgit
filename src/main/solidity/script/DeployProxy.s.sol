@@ -4,11 +4,11 @@ pragma solidity ^0.8.23;
 import "forge-std/Script.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
-import "../src/UsernameUniqueResolver.sol";
+import "../src/UsernameUniqueResolverV2.sol";
 
 /**
  * @title DeployProxy
- * @dev Deployment script for upgradeable proxy system with UsernameUniqueResolver
+ * @dev Deployment script for upgradeable proxy system with UsernameUniqueResolverV2
  */
 contract DeployProxy is Script {
     function run() external {
@@ -16,26 +16,50 @@ contract DeployProxy is Script {
         address deployer = vm.addr(deployerPrivateKey);
 
         // Get EAS configuration from environment
-        address easAddress = vm.envOr("EAS_ADDRESS", address(0x4200000000000000000000000000000000000021)); // Base Sepolia default
-        bytes32 schemaUid = vm.envOr("EAS_SCHEMA_UID", bytes32(0x6ba0509abc1a1ed41df2cce6cbc7350ea21922dae7fcbc408b54150a40be66af));
+        address easAddress = vm.envOr("EAS_ADDRESS", address(0x4200000000000000000000000000000000000021)); // Base mainnet default
+        bytes32 schemaUid = vm.envOr("EAS_SCHEMA_UID", bytes32(0));
+        address verifier = vm.envOr("ATTESTER_ADDRESS", address(0));
+        if (verifier == address(0)) {
+            verifier = vm.envAddress("VERIFIER_ADDRESS");
+        }
+        address treasury = vm.envAddress("TREASURY_ADDRESS");
+        address owner = vm.envOr("OWNER_ADDRESS", address(0));
 
         console.log("Deploying proxy system with deployer:", deployer);
         console.log("Deployer balance:", deployer.balance);
         console.log("EAS Address:", easAddress);
         console.log("Schema UID:", vm.toString(schemaUid));
+        console.log("Attester (verifier role):", verifier);
+        console.log("Treasury:", treasury);
+        if (owner != address(0)) {
+            console.log("Owner:", owner);
+        }
 
         vm.startBroadcast(deployerPrivateKey);
 
         // 1. Deploy implementation contract
-        UsernameUniqueResolver implementation = new UsernameUniqueResolver(easAddress, schemaUid);
+        UsernameUniqueResolverV2 implementation = new UsernameUniqueResolverV2(
+            easAddress,
+            schemaUid,
+            verifier,
+            treasury
+        );
         console.log("Implementation deployed at:", address(implementation));
 
         // 2. Deploy ProxyAdmin (manages upgrades)
         ProxyAdmin proxyAdmin = new ProxyAdmin(deployer);
         console.log("ProxyAdmin deployed at:", address(proxyAdmin));
+        if (owner != address(0) && owner != deployer) {
+            proxyAdmin.transferOwnership(owner);
+            console.log("ProxyAdmin owner transferred to:", owner);
+        }
 
-        // 3. No initialization data needed
-        bytes memory initData = "";
+        // 3. Initialize proxy storage
+        address initOwner = owner == address(0) ? deployer : owner;
+        bytes memory initData = abi.encodeCall(
+            UsernameUniqueResolverV2.initialize,
+            (initOwner, verifier, treasury)
+        );
 
         // 4. Deploy TransparentUpgradeableProxy
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
@@ -49,7 +73,7 @@ contract DeployProxy is Script {
 
         // Verification info
         console.log("\n=== Deployment Summary ===");
-        console.log("Implementation: UsernameUniqueResolver");
+        console.log("Implementation: UsernameUniqueResolverV2");
         console.log("Implementation Address:", address(implementation));
         console.log("ProxyAdmin Address:", address(proxyAdmin));
         console.log("Proxy Address:", address(proxy));

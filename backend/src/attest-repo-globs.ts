@@ -75,7 +75,7 @@ async function main() {
   const rc = await publicClient.waitForTransactionReceipt({ hash: tx });
   const uid = extractAttestationUid(rc.logs as any, EAS);
   console.log('UID', uid);
-  console.log('Basescan URL:', `${ACTIVE.explorers.basescanTx}/${tx}`);
+  console.log('Basescan URL:', `${ACTIVE.explorers.tx}/${tx}`);
   if (uid) {
     console.log('EASscan URL:', `${ACTIVE.explorers.easAttestation}/${uid}`);
   }

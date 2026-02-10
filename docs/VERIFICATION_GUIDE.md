@@ -16,7 +16,7 @@ Ask for their GitHub username (e.g., `cyberstorm-nisto`).
 
 ### 2. Check Identity Attestation
 
-Search for their identity attestation on [EAS Explorer](https://base-sepolia.easscan.org/):
+Search for their identity attestation on [EAS Explorer](https://base.easscan.org/):
 
 ```
 Schema: 0x6ba0509abc1a1ed41df2cce6cbc7350ea21922dae7fcbc408b54150a40be66af
@@ -94,10 +94,10 @@ Each contribution shows:
 
 ```typescript
 import { createPublicClient, http } from 'viem';
-import { baseSepolia } from 'viem/chains';
+import { base } from 'viem/chains';
 
 const client = createPublicClient({
-  chain: baseSepolia,
+  chain: base,
   transport: http()
 });
 

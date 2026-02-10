@@ -40,7 +40,7 @@ function getChainConfig(env: Env) {
     return {
       name: 'base' as const,
       chain: base,
-      rpcUrl: env.BASE_RPC_URL || 'https://mainnet.base.org',
+      rpcUrl: env.BASE_RPC_URL || 'https://base.api.pocket.network',
       easAddress: envOrThrow(env, 'BASE_EAS_ADDRESS'),
       permissionSchemaUid: envOrThrow(env, 'BASE_PERMISSION_SCHEMA_UID')
     };

@@ -81,6 +81,19 @@ contract UsernameUniqueResolverV2 {
     _;
   }
 
+  /**
+   * @notice Initialize proxy storage (for TransparentUpgradeableProxy deployments)
+   * @dev Can only be called once when owner is unset.
+   */
+  function initialize(address _owner, address _verifier, address _treasury) external {
+    if (owner != address(0)) revert NOT_AUTHORIZED();
+    if (_owner == address(0)) revert NOT_AUTHORIZED();
+    owner = _owner;
+    verifier = _verifier;
+    treasury = _treasury;
+    registrationFee = 0;
+  }
+
   // Role management
   function setOwner(address _owner) external onlyOwner {
     emit RoleUpdated("owner", owner, _owner);

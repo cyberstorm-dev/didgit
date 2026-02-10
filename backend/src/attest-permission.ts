@@ -21,6 +21,69 @@ const ACTIVE = getConfig();
 const SCHEMA_UID = ACTIVE.permissionSchemaUid;
 const EAS = ACTIVE.easAddress;
 const ZERO_UID = '0x0000000000000000000000000000000000000000000000000000000000000000';
+const EMPTY_UID = ZERO_UID;
+
+const easRegistryAbi = parseAbi([
+  'function getSchemaRegistry() view returns (address)'
+]);
+
+const schemaRegistryAbi = parseAbi([
+  'function getSchema(bytes32 uid) view returns ((bytes32,address,bool,string))'
+]);
+
+const EAS_ERROR_SELECTORS: Record<string, string> = {
+  '0xbf37b20e': 'InvalidSchema()',
+  '0x05d2aee8': 'NotPayable()',
+  '0x587bb4b3': 'Irrevocable()',
+  '0xcaa61f11': 'InsufficientValue()',
+  '0x0cf5cbe4': 'InvalidExpirationTime()',
+  '0x3caccd13': 'InvalidAttestation()',
+  '0x3aa8e7c3': 'AccessDenied()',
+  '0x539ef336': 'InvalidLength()'
+};
+
+function extractRevertSelector(err: any): string | undefined {
+  const candidates = [
+    err?.signature,
+    err?.cause?.signature,
+    err?.data,
+    err?.cause?.data,
+    err?.cause?.raw,
+    err?.raw
+  ];
+  for (const value of candidates) {
+    if (typeof value === 'string' && value.startsWith('0x') && value.length >= 10) {
+      return value.slice(0, 10);
+    }
+  }
+  return undefined;
+}
+
+async function assertSchemaExists(publicClient: ReturnType<typeof createPublicClient>, schemaUid: string) {
+  console.log('[permission] RPC:', ACTIVE.rpcUrl);
+  console.log('[permission] Permission schema UID:', schemaUid);
+  const schemaRegistry = await publicClient.readContract({
+    address: EAS as `0x${string}`,
+    abi: easRegistryAbi,
+    functionName: 'getSchemaRegistry'
+  });
+
+  const record = await publicClient.readContract({
+    address: schemaRegistry as `0x${string}`,
+    abi: schemaRegistryAbi,
+    functionName: 'getSchema',
+    args: [schemaUid as `0x${string}`]
+  }) as [string, string, boolean, string] | { uid: string; resolver: string; revocable: boolean; schema: string };
+
+  const uid = Array.isArray(record) ? record[0] : record?.uid;
+  console.log('[permission] Schema record:', record);
+  if (!uid || uid.toLowerCase() === EMPTY_UID.toLowerCase()) {
+    const chainId = await publicClient.getChainId();
+    throw new Error(
+      `Schema not found on chain ${chainId}. Check BASE_PERMISSION_SCHEMA_UID and register schemas on this chain.`
+    );
+  }
+}
 
 export function extractAttestationUid(
   logs: Array<{ address?: string; topics?: string[]; data?: string }>,
@@ -113,10 +176,13 @@ export async function attestPermission(input: {
   if (!PRIVATE_KEY.startsWith('0x')) throw new Error('PRIVATE_KEY required (0x-prefixed)');
   if (!USER_KERNEL.startsWith('0x')) throw new Error('USER_KERNEL required (0x-prefixed)');
   if (!PERMISSION_DATA.startsWith('0x')) throw new Error('PERMISSION_DATA required (0x-prefixed)');
+  if (!/^0x[0-9a-fA-F]{64}$/.test(SCHEMA_UID)) throw new Error('permission schema UID must be 32-byte hex');
 
   const account = privateKeyToAccount(PRIVATE_KEY as `0x${string}`);
   const walletClient = createWalletClient({ account, chain: ACTIVE.chain, transport: http(ACTIVE.rpcUrl) });
   const publicClient = createPublicClient({ chain: ACTIVE.chain, transport: http(ACTIVE.rpcUrl) });
+
+  await assertSchemaExists(publicClient, SCHEMA_UID);
 
   const abi = parseAbi([
     'function attest((bytes32 schema,(address recipient,uint64 expirationTime,bool revocable,bytes32 refUID,bytes data,uint256 value) data)) returns (bytes32)'
@@ -135,12 +201,24 @@ export async function attestPermission(input: {
   };
 
   console.log('Submitting permission for Kernel:', USER_KERNEL);
-  const tx = await walletClient.writeContract({ address: EAS, abi, functionName: 'attest', args: [req] });
+  let tx: `0x${string}`;
+  try {
+    tx = await walletClient.writeContract({ address: EAS, abi, functionName: 'attest', args: [req] });
+  } catch (err: any) {
+    const selector = extractRevertSelector(err);
+    if (selector && EAS_ERROR_SELECTORS[selector]) {
+      console.error('EAS revert:', EAS_ERROR_SELECTORS[selector]);
+      if (selector === '0xbf37b20e') {
+        console.error('Hint: permission schema UID is missing on this chain or wrong.');
+      }
+    }
+    throw err;
+  }
   console.log('TX', tx);
   const rc = await publicClient.waitForTransactionReceipt({ hash: tx });
   const uid = extractAttestationUid(rc.logs as any, EAS);
   console.log('UID', uid);
-  console.log('Basescan URL:', `${ACTIVE.explorers.basescanTx}/${tx}`);
+  console.log('Basescan URL:', `${ACTIVE.explorers.tx}/${tx}`);
   if (uid) {
     console.log('EASscan URL:', `${ACTIVE.explorers.easAttestation}/${uid}`);
   }

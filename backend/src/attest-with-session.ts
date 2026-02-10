@@ -17,6 +17,7 @@ import { deserializePermissionAccount } from '@zerodev/permissions';
 import { KERNEL_V3_1, getEntryPoint } from '@zerodev/sdk/constants';
 import { http as viemHttp } from 'viem';
 import { getConfig } from './config';
+import { extractAttestationUid } from './attest-permission';
 
 const ACTIVE = getConfig();
 const EAS_ADDRESS = ACTIVE.easAddress as Address;
@@ -140,12 +141,7 @@ export async function attestCommitWithSession(
     console.log('[attest-session] TX hash:', receipt.receipt.transactionHash);
 
     // Parse logs to get attestation UID
-    const attestedLog = receipt.receipt.logs.find(log => 
-      log.address.toLowerCase() === EAS_ADDRESS.toLowerCase() &&
-      log.topics[0] === '0x8bf46bf4cfd674fa735a3d63ec1c9ad4153f033c290341f3a588b75685141b35'
-    );
-
-    const attestationUid = attestedLog?.topics[3] as Hex | undefined;
+    const attestationUid = extractAttestationUid(receipt.receipt.logs as any, EAS_ADDRESS) as Hex | undefined;
 
     console.log('[attest-session] ✓ Attestation UID:', attestationUid);
 

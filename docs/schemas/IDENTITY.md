@@ -8,7 +8,7 @@ The identity attestation is the **cornerstone** of didgit.dev — it creates a v
 
 ## Schema
 
-**Schema UID (Base Sepolia):** `0x6ba0509abc1a1ed41df2cce6cbc7350ea21922dae7fcbc408b54150a40be66af`
+**Schema UID (Base mainnet):** `0x6ba0509abc1a1ed41df2cce6cbc7350ea21922dae7fcbc408b54150a40be66af`
 
 ```
 string domain,string username,address wallet,string message,bytes signature,string proof_url
@@ -52,7 +52,7 @@ A public GitHub gist is created containing:
   "wallet": "0x5B6441B4FF0AA470B1aEa11807F70FB98428BAEd",
   "message": "github.com:cyberstorm-nisto",
   "signature": "0x...",
-  "chain_id": 84532,
+  "chain_id": 8453,
   "schema_uid": "0x6ba0509abc1a1ed41df2cce6cbc7350ea21922dae7fcbc408b54150a40be66af"
 }
 ```
@@ -78,7 +78,7 @@ This prevents:
 - Linking multiple wallets to the same identity
 - Sybil attacks via identity multiplication
 
-**Resolver (Base Sepolia):** `0x7419150b821a507ef60c618d03c26517310ee633`
+**Resolver (Base mainnet):** `0x9A6F993e73E12Deba899c8856D78c7F05b71167A`
 
 ## Off-Chain Verification (Hardening)
 
@@ -103,7 +103,7 @@ This adds:
 query GetIdentity($username: String!) {
   attestations(
     where: {
-      schemaId: { equals: "0x6ba0509..." }
+      schemaId: { equals: "0x...<IDENTITY_SCHEMA_UID>" }
       decodedDataJson: { contains: $username }
     }
   ) {
@@ -121,7 +121,7 @@ query GetIdentity($username: String!) {
 query GetIdentityByWallet($wallet: String!) {
   attestations(
     where: {
-      schemaId: { equals: "0x6ba0509..." }
+      schemaId: { equals: "0x...<IDENTITY_SCHEMA_UID>" }
       recipient: { equals: $wallet }
     }
   ) {
@@ -143,4 +143,4 @@ query GetIdentityByWallet($wallet: String!) {
 - [Contribution Attestations](./CONTRIBUTION_ATTESTATIONS.md) - Activity tracking
 - [UsernameUniqueResolver](../src/main/solidity/src/UsernameUniqueResolver.sol) - Uniqueness enforcement
 - [EAS Documentation](https://docs.attest.sh/) - Ethereum Attestation Service
-- [Base Sepolia Explorer](https://base-sepolia.easscan.org/) - View attestations
+- [Base Explorer](https://base.easscan.org/) - View attestations

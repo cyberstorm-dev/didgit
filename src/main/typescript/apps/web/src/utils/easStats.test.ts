@@ -97,7 +97,7 @@ describe('fetchStats', () => {
       } as Response;
     });
 
-    const stats = await fetchStats(84532, identitySchema, contributionSchema, fetchFn);
+    const stats = await fetchStats(8453, identitySchema, contributionSchema, fetchFn);
 
     expect(stats.totalIdentities).toBe(2);
     expect(stats.totalCommits).toBe(120);

@@ -6,7 +6,6 @@ Query attestations via EAS GraphQL API.
 
 | Network | GraphQL Endpoint |
 |---------|------------------|
-| Base Sepolia | `https://base-sepolia.easscan.org/graphql` |
 | Base Mainnet | `https://base.easscan.org/graphql` |
 
 ## Schema UIDs
@@ -181,7 +180,7 @@ interface ContributionData {
 ## TypeScript Client
 
 ```typescript
-const EAS_GRAPHQL = 'https://base-sepolia.easscan.org/graphql';
+const EAS_GRAPHQL = 'https://base.easscan.org/graphql';
 
 async function query<T>(gql: string, variables: Record<string, any>): Promise<T> {
   const res = await fetch(EAS_GRAPHQL, {
