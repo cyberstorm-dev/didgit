@@ -10,6 +10,16 @@ pragma solidity ^0.8.23;
  * Users install this validator on their Kernel account to allow automated attestations.
  */
 contract AllowlistValidator {
+    // Minimal ERC-4337 types for compilation (not used by current deploy flow)
+    struct UserOperation {
+        bytes callData;
+        bytes signature;
+    }
+
+    type ValidationData is uint256;
+
+    uint256 internal constant SIG_VALIDATION_SUCCESS = 0;
+    uint256 internal constant SIG_VALIDATION_FAILED = 1;
     // Hardcoded verifier address (attester role, set at deployment)
     address public immutable verifier;
     
@@ -32,7 +42,7 @@ contract AllowlistValidator {
         UserOperation calldata userOp,
         bytes32 userOpHash,
         uint256 missingAccountFunds
-    ) external payable override returns (ValidationData validationData) {
+    ) external payable returns (ValidationData validationData) {
         // Extract the call data from userOp.callData
         // In Kernel v3, callData is the call to execute()
         // We need to decode it to check the target and function
@@ -42,14 +52,14 @@ contract AllowlistValidator {
         address signer = recoverSigner(userOpHash, userOp.signature);
         
         if (signer != verifier) {
-            return SIG_VALIDATION_FAILED;
+            return ValidationData.wrap(SIG_VALIDATION_FAILED);
         }
         
         // Additional check: ensure the call is to EAS.attest
         // This would require parsing userOp.callData
         // For MVP, we trust that if attester signed it, it's valid
         
-        return SIG_VALIDATION_SUCCESS;
+        return ValidationData.wrap(SIG_VALIDATION_SUCCESS);
     }
     
     /**
@@ -59,14 +69,14 @@ contract AllowlistValidator {
     function validateSignature(
         bytes32 hash,
         bytes calldata signature
-    ) external view override returns (ValidationData) {
+    ) external view returns (ValidationData) {
         address signer = recoverSigner(hash, signature);
         
         if (signer == verifier) {
-            return SIG_VALIDATION_SUCCESS;
+            return ValidationData.wrap(SIG_VALIDATION_SUCCESS);
         }
         
-        return SIG_VALIDATION_FAILED;
+        return ValidationData.wrap(SIG_VALIDATION_FAILED);
     }
     
     /**
@@ -75,7 +85,7 @@ contract AllowlistValidator {
     function validCaller(
         address caller,
         bytes calldata
-    ) external view override returns (bool) {
+    ) external view returns (bool) {
         return caller == verifier;
     }
     
