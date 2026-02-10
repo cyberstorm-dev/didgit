@@ -1,10 +1,11 @@
 #!/usr/bin/env npx tsx
-import { createWalletClient, createPublicClient, http, encodeAbiParameters, parseAbiParameters, parseEventLogs, formatEther } from 'viem';
+import { createWalletClient, createPublicClient, http, encodeAbiParameters, parseAbiParameters, formatEther } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { createKernelAccount } from '@zerodev/sdk';
 import { signerToEcdsaValidator } from '@zerodev/ecdsa-validator';
 import { KERNEL_V3_1, getEntryPoint } from '@zerodev/sdk/constants';
 import { CONFIG, getConfig } from './config';
+import { extractAttestationUid } from './attest-permission';
 
 /*
  * Identity attestation helper (Base Sepolia)
@@ -118,15 +119,6 @@ export async function attestIdentity(input: {
       ]}
     ]}],
     outputs: [{ name: '', type: 'bytes32' }]
-  }, {
-    name: 'Attested',
-    type: 'event',
-    inputs: [
-      { name: 'uid', type: 'bytes32', indexed: true },
-      { name: 'recipient', type: 'address', indexed: true },
-      { name: 'attester', type: 'address', indexed: true },
-      { name: 'schema', type: 'bytes32', indexed: false }
-    ]
   }] as const;
 
   const req = {
@@ -143,15 +135,11 @@ export async function attestIdentity(input: {
 
   const tx = await walletClient.writeContract({ address: EAS, abi: easAbi, functionName: 'attest', args: [req] });
   const receipt = await publicClient.waitForTransactionReceipt({ hash: tx });
-  const parsed = parseEventLogs({ abi: easAbi, logs: receipt.logs, eventName: 'Attested' });
-  const fallback = receipt.logs.find(
-    (l) => l.address.toLowerCase() === EAS.toLowerCase() && (l.topics?.length || 0) > 1
-  );
-  const uid = parsed[0]?.args?.uid ?? fallback?.topics?.[1];
+  const uid = extractAttestationUid(receipt.logs as any, EAS);
 
   console.log('TX:', tx);
   console.log('UID:', uid);
-  console.log('Basescan URL:', `${ACTIVE.explorers.basescanTx}/${tx}`);
+  console.log('Basescan URL:', `${ACTIVE.explorers.tx}/${tx}`);
   if (uid) {
     console.log('EASscan URL:', `${ACTIVE.explorers.easAttestation}/${uid}`);
   }

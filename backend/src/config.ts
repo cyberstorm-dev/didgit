@@ -30,8 +30,8 @@ function envOrThrow(name: string, value: string | undefined): string {
   return value;
 }
 
-const CHAINS: Record<ChainKey, ChainConfig> = {
-  base: {
+function getBaseConfig(): ChainConfig {
+  return {
     name: 'base',
     chain: base,
     chainId: 8453,
@@ -49,8 +49,11 @@ const CHAINS: Record<ChainKey, ChainConfig> = {
       easAttestation: 'https://base.easscan.org/attestation/view',
       easAddress: 'https://base.easscan.org/address'
     }
-  },
-  arbitrum: {
+  };
+}
+
+function getArbitrumConfig(): ChainConfig {
+  return {
     name: 'arbitrum',
     chain: arbitrum,
     chainId: 42161,
@@ -68,8 +71,8 @@ const CHAINS: Record<ChainKey, ChainConfig> = {
       easAttestation: 'https://arbitrum.easscan.org/attestation/view',
       easAddress: 'https://arbitrum.easscan.org/address'
     }
-  }
-};
+  };
+}
 
 export const CONFIG = {
   minBalanceEth: {
@@ -81,15 +84,15 @@ export const CONFIG = {
 
 export function getChainConfig(chainKey?: string) {
   const key = (chainKey || process.env.CHAIN || process.env.DIDGIT_CHAIN || 'base') as ChainKey;
-  const chain = CHAINS[key];
-  if (!chain) {
-    throw new Error(`Unknown CHAIN: ${key}`);
+  if (key === 'base') {
+    const chain = getBaseConfig();
+    return { ...chain, minBalanceEth: CONFIG.minBalanceEth, maxKernelTopUpEth: CONFIG.maxKernelTopUpEth };
   }
-  return {
-    ...chain,
-    minBalanceEth: CONFIG.minBalanceEth,
-    maxKernelTopUpEth: CONFIG.maxKernelTopUpEth
-  };
+  if (key === 'arbitrum') {
+    const chain = getArbitrumConfig();
+    return { ...chain, minBalanceEth: CONFIG.minBalanceEth, maxKernelTopUpEth: CONFIG.maxKernelTopUpEth };
+  }
+  throw new Error(`Unknown CHAIN: ${key}`);
 }
 
 export function getConfig(chainKey?: string) {

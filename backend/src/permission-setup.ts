@@ -12,6 +12,8 @@ type RunOptions = {
   kernelAddress?: string;
   fetchFn?: FetchFn;
   attestFn?: (args: { privateKey: string; kernelAddress: string; permissionData: string }) => Promise<void>;
+  maxRetries?: number;
+  retryDelayMs?: number;
 };
 
 function requireEnv(val: string | undefined, name: string) {
@@ -34,6 +36,39 @@ export function resolvePermissionApiUrl(explicitUrl?: string) {
   return url;
 }
 
+function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function withJitter(baseMs: number, attempt: number) {
+  const max = baseMs * Math.pow(2, attempt);
+  const jitter = Math.floor(Math.random() * 200);
+  return Math.min(max + jitter, 8000);
+}
+
+async function fetchWithRetry(fetchFn: FetchFn, url: string, init: RequestInit, opts: { maxRetries: number; retryDelayMs: number }) {
+  let lastError: Error | undefined;
+  for (let attempt = 0; attempt <= opts.maxRetries; attempt++) {
+    try {
+      const res = await fetchFn(url, init);
+      if (res.ok) return res;
+      const body = await res.text();
+      const isRetryable = res.status === 429 || (res.status >= 500 && res.status < 600);
+      if (!isRetryable || attempt === opts.maxRetries) {
+        throw new Error(`${res.status} ${res.statusText}: ${body}`);
+      }
+      lastError = new Error(`${res.status} ${res.statusText}: ${body}`);
+    } catch (err) {
+      lastError = err as Error;
+      if (attempt === opts.maxRetries) break;
+    }
+    const delay = withJitter(opts.retryDelayMs, attempt);
+    console.log(`[permission-setup] Retry ${attempt + 1}/${opts.maxRetries} in ${delay}ms...`);
+    await sleep(delay);
+  }
+  throw lastError ?? new Error('Request failed');
+}
+
 export async function runPermissionSetup(opts: RunOptions = {}) {
   const privateKey = (opts.privateKey || process.env.PRIVATE_KEY || '').trim();
   const apiUrl = normalizeBaseUrl(
@@ -43,6 +78,8 @@ export async function runPermissionSetup(opts: RunOptions = {}) {
   const kernelAddress = (opts.kernelAddress || process.env.KERNEL_ADDRESS || '').trim();
   const fetchFn: FetchFn = opts.fetchFn || fetch;
   const attestFn = opts.attestFn || attestPermission;
+  const maxRetries = opts.maxRetries ?? Number(process.env.PERMISSION_SETUP_RETRIES || 3);
+  const retryDelayMs = opts.retryDelayMs ?? Number(process.env.PERMISSION_SETUP_RETRY_DELAY_MS || 750);
 
   requireEnv(privateKey, 'PRIVATE_KEY');
   requireEnv(apiKey, 'PERMISSION_API_KEY');
@@ -50,34 +87,28 @@ export async function runPermissionSetup(opts: RunOptions = {}) {
   const account = privateKeyToAccount(privateKey as Hex);
   const userEOA = account.address;
 
-  const prepareRes = await fetchFn(`${apiUrl}/prepare`, {
+  const prepareRes = await fetchWithRetry(fetchFn, `${apiUrl}/prepare`, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
       'x-api-key': apiKey
     },
     body: JSON.stringify({ userEOA, kernelAddress: kernelAddress || undefined })
-  });
-  if (!prepareRes.ok) {
-    throw new Error(`prepare failed: ${await prepareRes.text()}`);
-  }
+  }, { maxRetries, retryDelayMs });
   const prepareJson = await prepareRes.json() as { typedData: any; kernelAddress: string };
   const typedData = prepareJson.typedData;
   const resolvedKernel = prepareJson.kernelAddress;
 
   const enableSignature = await account.signTypedData(typedData);
 
-  const completeRes = await fetchFn(`${apiUrl}/complete`, {
+  const completeRes = await fetchWithRetry(fetchFn, `${apiUrl}/complete`, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
       'x-api-key': apiKey
     },
     body: JSON.stringify({ userEOA, kernelAddress: resolvedKernel, enableSignature })
-  });
-  if (!completeRes.ok) {
-    throw new Error(`complete failed: ${await completeRes.text()}`);
-  }
+  }, { maxRetries, retryDelayMs });
   const completeJson = await completeRes.json() as { permissionData: string; kernelAddress: string };
 
   await attestFn({
@@ -101,6 +132,12 @@ async function main() {
 const isMain = process.argv[1] && /permission-setup\.(ts|js)$/.test(process.argv[1]);
 if (isMain) {
   main().catch((err) => {
+    console.error('[permission-setup] Failed after retries.');
+    console.error('[permission-setup] If this is a 429 or RPC rate-limit, switch BASE_RPC_URL to a higher-capacity provider and retry.');
+    const msg = (err as Error)?.message || '';
+    if (msg.includes('InvalidSchema') || msg.includes('Schema not found') || msg.includes('0xbf37b20e')) {
+      console.error('[permission-setup] Schema not found on this chain. Re-run schema registration and set BASE_PERMISSION_SCHEMA_UID.');
+    }
     console.error(err);
     process.exit(1);
   });

@@ -53,6 +53,17 @@ and then sets up the permission (session key) automatically.
 ```bash
 cd /Users/allenday/src/didgit/backend
 
+# Required chain config (Base mainnet)
+export CHAIN=base
+export BASE_RPC_URL=https://mainnet.base.org
+export BASE_EAS_ADDRESS=0x4200000000000000000000000000000000000021
+export BASE_SCHEMA_REGISTRY_ADDRESS=0x4200000000000000000000000000000000000020
+export BASE_RESOLVER_ADDRESS=0x9A6F993e73E12Deba899c8856D78c7F05b71167A
+export BASE_IDENTITY_SCHEMA_UID=0x6ba0509abc1a1ed41df2cce6cbc7350ea21922dae7fcbc408b54150a40be66af
+export BASE_CONTRIBUTION_SCHEMA_UID=0x7425c71616d2959f30296d8e013a8fd23320145b1dfda0718ab0a692087f8782
+export BASE_PERMISSION_SCHEMA_UID=0x6ab56e335e99f78585c89e5535b47c3c90c94c056775dbd28a57490b07e2e9b6
+export BASE_REPO_GLOBS_SCHEMA_UID=0x79cb78c31678d34847273f605290b2ab56db29a057fdad8facdcc492b9cf2e74
+
 # Full-auto if GITHUB_TOKEN is set (PAT with `gist` scope)
 GITHUB_USERNAME=$GITHUB_USERNAME \
 PRIVATE_KEY=$PRIVATE_KEY \
@@ -70,7 +81,7 @@ then you set `GIST_URL` and rerun the same command.
 > The script checks your Base ETH balance before submitting.
 
 > [!NOTE]
-> Use `CHAIN=base` or `DIDGIT_CHAIN=base` (default is `base`).
+> The onboarding command reads `backend/.env`. If you don’t want to edit that file, the exports above are sufficient for the current shell session.
 
 ---
 

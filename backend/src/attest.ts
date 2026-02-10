@@ -2,6 +2,7 @@ import { createPublicClient, http, type Address, type Hex, parseAbi, encodeFunct
 import { privateKeyToAccount } from 'viem/accounts';
 import { getConfig } from './config';
 import { getAttesterPrivKey } from './env';
+import { extractAttestationUid } from './attest-permission';
 
 const ACTIVE = getConfig();
 const EAS_ADDRESS = ACTIVE.easAddress as Address;
@@ -95,12 +96,7 @@ export async function attestCommit(req: AttestCommitRequest): Promise<{ success:
     console.log('[attest] Receipt:', receipt.status);
 
     // Parse logs to get attestation UID
-    const attestedLog = receipt.logs.find(log => 
-      log.address.toLowerCase() === EAS_ADDRESS.toLowerCase() &&
-      log.topics[0] === '0x8bf46bf4cfd674fa735a3d63ec1c9ad4153f033c290341f3a588b75685141b35' // Attested event
-    );
-
-    const attestationUid = attestedLog?.topics[3] as Hex | undefined;
+    const attestationUid = extractAttestationUid(receipt.logs as any, EAS_ADDRESS) as Hex | undefined;
 
     if (!attestationUid) {
       throw new Error('Failed to parse attestation UID from logs');
