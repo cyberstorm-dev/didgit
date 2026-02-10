@@ -1,7 +1,7 @@
 #!/usr/bin/env npx tsx
 import { createWalletClient, createPublicClient, http, parseEventLogs, getEventSelector } from 'viem';
 import { parseAbi } from 'viem';
-import type { Address, Hex, PublicClient } from 'viem';
+import type { Address, Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { getConfig } from './config';
 
@@ -60,7 +60,7 @@ function extractRevertSelector(err: any): string | undefined {
   return undefined;
 }
 
-async function assertSchemaExists(publicClient: PublicClient, schemaUid: Hex) {
+async function assertSchemaExists(publicClient: any, schemaUid: Hex) {
   console.log('[permission] RPC:', ACTIVE.rpcUrl);
   console.log('[permission] Permission schema UID:', schemaUid);
   const schemaRegistry = await publicClient.readContract({
