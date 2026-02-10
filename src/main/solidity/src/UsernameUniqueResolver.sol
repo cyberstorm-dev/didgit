@@ -6,7 +6,7 @@ pragma solidity ^0.8.23;
  * - EAS SchemaResolver for GitHub username binding schema with repository pattern tracking
  * - Enforces global uniqueness of lowercase(domain + username) combinations
  * - Tracks repository patterns for each username to enable selective attestation indexing
- * - Supports wildcard patterns (*, namespace/*, */name, namespace/name)
+ * - Supports wildcard patterns (*, namespace/*, any-namespace/name, namespace/name)
  */
 interface IEASLikeMinimal {
   // Placeholder – not used directly in this skeleton.
@@ -248,4 +248,3 @@ contract UsernameUniqueResolver {
     return new Identity[](0);
   }
 }
-
