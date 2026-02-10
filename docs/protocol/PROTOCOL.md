@@ -222,9 +222,9 @@ Each gets its own schema, references identity.
 
 | Network | Contract | Address |
 |---------|----------|---------|
-| Base Sepolia | EAS | `0x4200000000000000000000000000000000000021` |
-| Base Sepolia | SchemaRegistry | `0x4200000000000000000000000000000000000020` |
-| Base Sepolia | UsernameUniqueResolver | `0x20c1cb4313efc28d325d3a893a68ca8c82911b0c` |
+| Base Mainnet | EAS | `0x4200000000000000000000000000000000000021` |
+| Base Mainnet | SchemaRegistry | `0x4200000000000000000000000000000000000020` |
+| Base Mainnet | UsernameUniqueResolver | `0x9A6F993e73E12Deba899c8856D78c7F05b71167A` |
 | Base (mainnet) | EAS | `0x4200000000000000000000000000000000000021` |
 
 ---

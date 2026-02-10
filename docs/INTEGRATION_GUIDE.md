@@ -164,10 +164,10 @@ client.subscribe({
 
 | Network | Contract | Address |
 |---------|----------|---------|
-| Base Sepolia | EAS | `0x4200000000000000000000000000000000000021` |
-| Base Sepolia | Identity Schema | `0x6ba0509abc1a1ed41df2cce6cbc7350ea21922dae7fcbc408b54150a40be66af` |
-| Base Sepolia | Contribution Schema | `0x7425c71616d2959f30296d8e013a8fd23320145b1dfda0718ab0a692087f8782` |
-| Base Sepolia | Resolver | `0x20c1cb4313efc28d325d3a893a68ca8c82911b0c` |
+| Base Mainnet | EAS | `0x4200000000000000000000000000000000000021` |
+| Base Mainnet | Identity Schema | `0x6ba0509abc1a1ed41df2cce6cbc7350ea21922dae7fcbc408b54150a40be66af` |
+| Base Mainnet | Contribution Schema | `0x7425c71616d2959f30296d8e013a8fd23320145b1dfda0718ab0a692087f8782` |
+| Base Mainnet | Resolver | `0x9A6F993e73E12Deba899c8856D78c7F05b71167A` |
 
 ## Next Steps
 

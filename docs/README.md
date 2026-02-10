@@ -39,7 +39,7 @@
 
 ---
 
-## Contract Addresses (Base Sepolia / Testnet)
+## Contract Addresses (Base Mainnet)
 
 | Contract | Address |
 |----------|---------|

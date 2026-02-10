@@ -4,13 +4,13 @@ Contract addresses, ABIs, and deployment information.
 
 ## Network Addresses
 
-### Base Sepolia (Testnet)
+### Base Mainnet
 
 | Contract | Address | Explorer |
 |----------|---------|----------|
-| EAS | `0x4200000000000000000000000000000000000021` | [View](https://sepolia.basescan.org/address/0x4200000000000000000000000000000000000021) |
-| SchemaRegistry | `0x4200000000000000000000000000000000000020` | [View](https://sepolia.basescan.org/address/0x4200000000000000000000000000000000000020) |
-| UsernameUniqueResolver | `0x20c1cb4313efc28d325d3a893a68ca8c82911b0c` | [View](https://sepolia.basescan.org/address/0x20c1cb4313efc28d325d3a893a68ca8c82911b0c) |
+| EAS | `0x4200000000000000000000000000000000000021` | [View](https://basescan.org/address/0x4200000000000000000000000000000000000021) |
+| SchemaRegistry | `0x4200000000000000000000000000000000000020` | [View](https://basescan.org/address/0x4200000000000000000000000000000000000020) |
+| UsernameUniqueResolver (Proxy) | `0x9A6F993e73E12Deba899c8856D78c7F05b71167A` | [View](https://basescan.org/address/0x9A6F993e73E12Deba899c8856D78c7F05b71167A) |
 
 ### Base Mainnet
 
@@ -55,7 +55,7 @@ string repo, string commitHash, string author, string message, uint64 timestamp,
 [View on EAS Explorer](https://base.easscan.org/schema/view/0x7425c71616d2959f30296d8e013a8fd23320145b1dfda0718ab0a692087f8782)
 
 > [!IMPORTANT]
-> Mainnet schema UIDs are chain-specific and will differ from Base Sepolia. Update this doc once mainnet schemas are registered.
+> Schema UIDs are chain-specific. The values above are for Base mainnet.
 
 ## UsernameUniqueResolver ABI
 
