@@ -24,6 +24,7 @@ This repo uses a small set of environment variables across backend tooling and w
 | `ARBITRUM_PERMISSION_SCHEMA_UID` | Required | Permission schema UID on Arbitrum | backend/worker |
 | `BASE_REPO_GLOBS_SCHEMA_UID` | Required | Repo globs schema UID on Base | backend |
 | `ARBITRUM_REPO_GLOBS_SCHEMA_UID` | Required | Repo globs schema UID on Arbitrum | backend |
+| `ATTEST_FALLBACK_REPO_SCAN` | Optional | Set to `1` to fallback to per-repo commit scans when no public events are found | backend |
 | `WORKER_API_KEY` | Optional | Permission worker API key | `backend/src/permission-setup.ts` |
 
 > [!IMPORTANT]

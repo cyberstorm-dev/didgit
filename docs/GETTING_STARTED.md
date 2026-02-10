@@ -44,6 +44,9 @@ export BASE_REPO_GLOBS_SCHEMA_UID=0x79cb78c31678d34847273f605290b2ab56db29a057fd
 4. **Authorize attester** via permission blob (session key)
 5. **Register repo globs** for commit attestations
 
+> [!WARNING]
+> Repo globs prefixed with `*/` (including `*/*` and `*/repo`) are **not supported** and will be rejected. The attestor relies on public GitHub events for `owner/*` patterns and cannot resolve global wildcards reliably.
+
 ## Where to Verify
 
 - EAS Explorer: https://base.easscan.org/

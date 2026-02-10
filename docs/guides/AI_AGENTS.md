@@ -138,7 +138,7 @@ cast send 0x<KERNEL_ADDRESS> --value 0.01ether --rpc-url https://mainnet.base.or
 
 ### Scope Limits
 
-- Register only necessary repos (not `*/*`)
+- Register only necessary repos (no `*/`-prefixed globs)
 - Use separate agents for separate trust domains
 - Monitor agent activity
 

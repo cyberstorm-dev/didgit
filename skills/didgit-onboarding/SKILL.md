@@ -162,10 +162,11 @@ pnpm run repo:register
 ```
 
 Examples:
-- `*/*` attest all repos
 - `username/*` all repos for a user/org
 - `username/myrepo` specific repo
-- `*/myrepo` any org/user repo named `myrepo`
+
+> [!WARNING]  
+> `*/*` and `*/repo` patterns are **not supported**. They can't be resolved reliably from public GitHub events, so the attestor rejects any glob prefixed with `*/`.
 
 ---
 
