@@ -13,6 +13,10 @@ export async function resolveRepoGlobs(args: ResolveRepoGlobsArgs): Promise<Repo
   const seenOwners = new Set<string>();
 
   for (const glob of args.globs) {
+    if (glob.startsWith('*/')) {
+      console.log(`[repo-watch] Skipping unsupported glob: ${glob} (no */ prefix allowed)`);
+      continue;
+    }
     const [owner, repoPattern] = glob.split('/');
     if (!owner || !repoPattern) continue;
 

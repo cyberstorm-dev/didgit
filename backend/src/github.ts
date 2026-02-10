@@ -161,6 +161,40 @@ export async function getRecentUserPushCommits(username: string, since?: Date): 
   return commits.filter((c) => new Date(c.timestamp).getTime() >= sinceMs);
 }
 
+export async function getRecentOwnerPushCommits(owner: string, since?: Date): Promise<CommitInfo[]> {
+  const octokit = new Octokit({ auth: getGitHubToken() });
+
+  const { data: userEvents } = await requestWithRetry(
+    () =>
+      octokit.activity.listPublicEventsForUser({
+        username: owner,
+        per_page: 100
+      }),
+    `listPublicEventsForUser ${owner}`
+  );
+
+  let commits = parsePushEventsToCommits(userEvents as any[]);
+  if (commits.length === 0) {
+    try {
+      const { data: orgEvents } = await requestWithRetry(
+        () =>
+          octokit.activity.listPublicOrgEvents({
+            org: owner,
+            per_page: 100
+          }),
+        `listPublicOrgEvents ${owner}`
+      );
+      commits = parsePushEventsToCommits(orgEvents as any[]);
+    } catch {
+      // ignore org fallback errors
+    }
+  }
+
+  if (!since) return commits;
+  const sinceMs = since.getTime();
+  return commits.filter((c) => new Date(c.timestamp).getTime() >= sinceMs);
+}
+
 export async function getCommit(
   owner: string,
   repo: string,

@@ -15,10 +15,15 @@ export function buildRepoGlobsData(globs: string[]) {
 }
 
 function parseGlobs(input: string): string[] {
-  return input
+  const globs = input
     .split(',')
     .map((g) => g.trim())
     .filter(Boolean);
+  const invalid = globs.filter((g) => g.startsWith('*/'));
+  if (invalid.length > 0) {
+    throw new Error(`Invalid repo globs (no */ prefix allowed): ${invalid.join(', ')}`);
+  }
+  return globs;
 }
 
 async function main() {

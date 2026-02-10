@@ -1,5 +1,5 @@
 import { createPublicClient, http, type Address, type Hex, parseAbi } from 'viem';
-import { getRecentCommits, getRecentUserPushCommits, matchCommitToGitHubUser, listOrgRepos, listUserRepos, type CommitInfo } from './github';
+import { getRecentCommits, getRecentOwnerPushCommits, matchCommitToGitHubUser, listOrgRepos, listUserRepos, type CommitInfo } from './github';
 import { attestCommitWithSession, type SessionConfig } from './attest-with-session';
 import { getConfig } from './config';
 import { getAttesterPrivKey } from './env';
@@ -229,9 +229,22 @@ export class AttestationService {
   async processWildcardOwner(owner: string, users: RegisteredUser[], since: Date, recentAttested: Set<string>): Promise<number> {
     console.log(`[service] Processing wildcard ${owner}/* via events...`);
     try {
-      const commits = await getRecentUserPushCommits(owner, since);
+      const commits = await getRecentOwnerPushCommits(owner, since);
       console.log(`[service] Found ${commits.length} push commits for ${owner} since ${since.toISOString()}`);
-      return await this.processCommits(commits, users, recentAttested);
+      if (commits.length > 0) {
+        return await this.processCommits(commits, users, recentAttested);
+      }
+      if (process.env.ATTEST_FALLBACK_REPO_SCAN === '1') {
+        console.log(`[service] No push events for ${owner}; falling back to repo listing (ATTEST_FALLBACK_REPO_SCAN=1)`);
+        const orgRepos = await listOrgRepos(owner);
+        const userRepos = orgRepos.length === 0 ? await listUserRepos(owner) : orgRepos;
+        let total = 0;
+        for (const repo of userRepos) {
+          total += await this.processRepo(repo, users, since, recentAttested);
+        }
+        return total;
+      }
+      return 0;
     } catch (e: any) {
       if (e.status === 404) {
         console.log(`[service] No public events for ${owner}; falling back to repo listing`);
