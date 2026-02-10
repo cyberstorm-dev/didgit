@@ -3,11 +3,7 @@ import { Paper, Typography, Box, Skeleton, Chip, Grid } from '@mui/material';
 import { VerifiedUser, TrendingUp, GitHub, Code, FolderSpecial } from '@mui/icons-material';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { appConfig } from '../utils/config';
-
-type ChartDataPoint = {
-  date: string;
-  count: number;
-};
+import { ChartDataPoint, fetchStats } from '../utils/easStats';
 
 type Stats = {
   totalIdentities: number;
@@ -19,144 +15,9 @@ type Stats = {
   error: string | null;
 };
 
-// EAS GraphQL endpoint based on chain
-function getEasGraphqlEndpoint(chainId: number): string {
-  switch (chainId) {
-    case 8453:
-      return 'https://base.easscan.org/graphql';
-    case 84532:
-      return 'https://base-sepolia.easscan.org/graphql';
-    default:
-      return 'https://base-sepolia.easscan.org/graphql';
-  }
-}
-
 // Schema UIDs
 const IDENTITY_SCHEMA_UID = '0x6ba0509abc1a1ed41df2cce6cbc7350ea21922dae7fcbc408b54150a40be66af';
 const CONTRIBUTION_SCHEMA_UID = '0x7425c71616d2959f30296d8e013a8fd23320145b1dfda0718ab0a692087f8782';
-
-async function fetchStats(chainId: number): Promise<Omit<Stats, 'loading' | 'error'>> {
-  const endpoint = getEasGraphqlEndpoint(chainId);
-  
-  // Query for identity attestations
-  const identityQuery = `
-    query GetIdentities($schemaId: String!) {
-      attestations(
-        where: { schemaId: { equals: $schemaId }, revoked: { equals: false } }
-        orderBy: { time: asc }
-      ) {
-        id
-        time
-        decodedDataJson
-      }
-    }
-  `;
-
-  // Query for contribution attestations  
-  const contributionQuery = `
-    query GetContributions($schemaId: String!) {
-      attestations(
-        where: { schemaId: { equals: $schemaId }, revoked: { equals: false } }
-        orderBy: { time: asc }
-      ) {
-        id
-        time
-        decodedDataJson
-      }
-    }
-  `;
-
-  const [identityRes, contributionRes] = await Promise.all([
-    fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: identityQuery, variables: { schemaId: IDENTITY_SCHEMA_UID } })
-    }),
-    fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: contributionQuery, variables: { schemaId: CONTRIBUTION_SCHEMA_UID } })
-    })
-  ]);
-
-  if (!identityRes.ok || !contributionRes.ok) {
-    throw new Error(`EAS API error`);
-  }
-
-  const [identityData, contributionData] = await Promise.all([
-    identityRes.json(),
-    contributionRes.json()
-  ]);
-
-  const identities = identityData?.data?.attestations ?? [];
-  const contributions = contributionData?.data?.attestations ?? [];
-
-  // Process identities - dedupe by username
-  const seenUsernames = new Map<string, { time: number }>();
-  for (const att of identities) {
-    let username = 'unknown';
-    try {
-      const decoded = JSON.parse(att.decodedDataJson);
-      const usernameField = decoded.find((d: any) => d.name === 'username');
-      if (usernameField?.value?.value) {
-        username = usernameField.value.value;
-      }
-    } catch {}
-    
-    const existing = seenUsernames.get(username);
-    if (!existing || att.time > existing.time) {
-      seenUsernames.set(username, { time: att.time });
-    }
-  }
-
-  // Process contributions - extract repos
-  const uniqueRepos = new Set<string>();
-  const commitTimes: number[] = [];
-  
-  for (const att of contributions) {
-    commitTimes.push(att.time);
-    try {
-      const decoded = JSON.parse(att.decodedDataJson);
-      const repoField = decoded.find((d: any) => d.name === 'repo');
-      if (repoField?.value?.value) {
-        uniqueRepos.add(repoField.value.value);
-      }
-    } catch {}
-  }
-
-  // Build identity chart (cumulative by day)
-  const identityChart = buildCumulativeChart(
-    Array.from(seenUsernames.values()).map(v => v.time)
-  );
-
-  // Build commits chart (cumulative by day)
-  const commitsChart = buildCumulativeChart(commitTimes);
-
-  return {
-    totalIdentities: seenUsernames.size,
-    totalCommits: contributions.length,
-    totalRepos: uniqueRepos.size,
-    identityChart,
-    commitsChart
-  };
-}
-
-function buildCumulativeChart(timestamps: number[]): ChartDataPoint[] {
-  const sorted = [...timestamps].sort((a, b) => a - b);
-  const dailyCounts = new Map<string, number>();
-  let cumulative = 0;
-  
-  for (const time of sorted) {
-    const date = new Date(time * 1000).toISOString().split('T')[0];
-    cumulative++;
-    dailyCounts.set(date, cumulative);
-  }
-
-  return Array.from(dailyCounts.entries()).map(([date, count]) => ({
-    date: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-    count
-  }));
-}
 
 type StatBoxProps = {
   icon: React.ReactNode;
@@ -229,7 +90,7 @@ export const StatsCard: React.FC = () => {
   const config = appConfig();
 
   useEffect(() => {
-    fetchStats(config.CHAIN_ID)
+    fetchStats(config.CHAIN_ID, IDENTITY_SCHEMA_UID, CONTRIBUTION_SCHEMA_UID)
       .then((data) => {
         setStats({
           ...data,

@@ -1,9 +1,10 @@
 import { createPublicClient, http, type Address, type Hex, parseAbi, encodeFunctionData, encodeAbiParameters, parseAbiParameters } from 'viem';
-import { baseSepolia } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
+import { getConfig } from './config';
 
-const EAS_ADDRESS = '0x4200000000000000000000000000000000000021' as Address;
-const CONTRIBUTION_SCHEMA_UID = '0x7425c71616d2959f30296d8e013a8fd23320145b1dfda0718ab0a692087f8782' as Hex;
+const ACTIVE = getConfig();
+const EAS_ADDRESS = ACTIVE.easAddress as Address;
+const CONTRIBUTION_SCHEMA_UID = ACTIVE.contributionSchemaUid as Hex;
 
 const easAbi = parseAbi([
   'function attest((bytes32 schema,(address recipient,uint64 expirationTime,bool revocable,bytes32 refUID,bytes data,uint256 value) data)) returns (bytes32)'
@@ -30,8 +31,8 @@ export async function attestCommit(req: AttestCommitRequest): Promise<{ success:
     console.log('[attest] Commit:', req.commitHash.slice(0, 12));
 
     const publicClient = createPublicClient({
-      chain: baseSepolia,
-      transport: http(baseSepolia.rpcUrls.default.http[0])
+      chain: ACTIVE.chain,
+      transport: http(ACTIVE.rpcUrl)
     });
 
     // Encode contribution data according to schema
@@ -74,8 +75,8 @@ export async function attestCommit(req: AttestCommitRequest): Promise<{ success:
 
     const walletClient = createWalletClient({
       account: verifierAccount,
-      chain: baseSepolia,
-      transport: httpTransport(baseSepolia.rpcUrls.default.http[0])
+      chain: ACTIVE.chain,
+      transport: httpTransport(ACTIVE.rpcUrl)
     });
 
     // Call EAS.attest

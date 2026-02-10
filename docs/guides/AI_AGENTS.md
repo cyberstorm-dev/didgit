@@ -22,11 +22,11 @@ Without attestations:
 
 With didgit.dev:
 - Agent has cryptographic identity linking GitHub → wallet
-- Contributions are attested on-chain
+- Contributions are attested on-chain (agent owns them)
 - History is portable and verifiable
 - Trust can be delegated and revoked
 
-## Setup Guide
+## Quick Start: Agent Registration
 
 ### 1. Create Agent GitHub Account
 
@@ -56,17 +56,76 @@ Follow the standard [Getting Started](../GETTING_STARTED.md) flow:
 
 ### 4. Register Repositories
 
-Register which repos the agent can contribute to:
+Create a Repo Globs attestation to specify which repos to track:
 
-```typescript
-await resolver.setRepoPattern(
-  'github.com',
-  'agent-username',
-  'yourorg',
-  '*',  // or specific repo
-  true
-);
 ```
+Pattern: "yourorg/*" or "yourorg/specific-repo"
+```
+
+This is referenced to your identity attestation.
+
+### 5. Set Up Session Key (for automatic attestations)
+
+This is the key step that enables automatic commit attestations without agent involvement:
+
+```bash
+cd didgit/backend
+
+# One-time setup (requires agent's private key)
+USER_PRIVKEY=0x<agent-wallet-key> \
+VERIFIER_PRIVKEY=0x<verifier-key> \
+BUNDLER_RPC=<zerodev-bundler-url> \
+npm run setup-session-key
+```
+
+This:
+1. Deploys a Kernel smart account for the agent (if needed)
+2. Grants the verifier permission to call EAS.attest() on behalf of the agent
+3. Serializes the permission for runtime use
+
+**After setup, the agent's private key is never needed again.** The verifier can attest commits automatically, but the attestations are owned by the agent's Kernel.
+
+### 6. Fund the Kernel
+
+The agent's Kernel pays gas for attestations:
+
+```bash
+# Send ETH to the Kernel address (shown in setup output)
+cast send 0x<KERNEL_ADDRESS> --value 0.01ether --rpc-url https://sepolia.base.org
+```
+
+0.01 ETH covers ~1000+ attestations on Base Sepolia.
+
+## How Automatic Attestations Work
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                                                                  │
+│   Agent commits code                                            │
+│         │                                                        │
+│         ▼                                                        │
+│   Backend detects commit (via GitHub API)                       │
+│         │                                                        │
+│         ▼                                                        │
+│   Backend deserializes agent's permission account               │
+│         │                                                        │
+│         ▼                                                        │
+│   Verifier signs UserOp (scoped to EAS.attest only)            │
+│         │                                                        │
+│         ▼                                                        │
+│   Agent's Kernel executes attestation                           │
+│         │                                                        │
+│         ├─▶ Gas paid from Kernel balance                        │
+│         └─▶ Attestation owned by agent's Kernel address         │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Key properties:**
+- Agent doesn't sign anything at runtime
+- Agent owns all attestations
+- Agent can revoke the verifier's permission anytime
+- Verifier can only call EAS.attest() — no other actions possible
 
 ## Security Considerations
 
@@ -74,7 +133,7 @@ await resolver.setRepoPattern(
 
 - **Never** store agent private keys in code or env vars
 - Use HSM, KMS, or secure enclaves
-- Rotate keys periodically
+- After session key setup, the agent's private key can be cold-stored
 - Have revocation plan ready
 
 ### Scope Limits
@@ -83,9 +142,21 @@ await resolver.setRepoPattern(
 - Use separate agents for separate trust domains
 - Monitor agent activity
 
+### Session Key Security
+
+The session key permission is narrowly scoped:
+- Only allows `EAS.attest()` calls
+- Only to the specific EAS contract
+- Zero value (no ETH transfers)
+
+If the verifier key is compromised:
+1. Revoke the permission from your Kernel
+2. Rotate verifier keys
+3. Re-run setup with new verifier
+
 ### Operator Disclosure
 
-Consider adding to your agent's gist:
+Consider adding to your agent's proof gist:
 
 ```json
 {
@@ -98,50 +169,73 @@ Consider adding to your agent's gist:
 
 This signals to verifiers that this is an AI agent.
 
-## Example: Nisto (Our Dogfood)
+## Example: Nisto
 
-**Nisto** is an AI agent that contributes to cyberstorm.dev projects:
+**Nisto** is an AI agent contributing to cyberstorm.dev projects.
 
-- GitHub: [cyberstorm-nisto](https://github.com/cyberstorm-nisto)
-- Identity: [0x544ef100...](https://base-sepolia.easscan.org/attestation/view/0x544ef10042bad01b84d8f436e8dd63e87b21d1ff1c6157a0393a74da93878eb6)
-- Proof Gist: [didgit.dev-proof.json](https://gist.github.com/cyberstorm-nisto/aecc4dad76440c84ee2321e885d8f21f)
+| Field | Value |
+|-------|-------|
+| GitHub | [cyberstorm-nisto](https://github.com/cyberstorm-nisto) |
+| EOA | `0x5B6441B4FF0AA470B1aEa11807F70FB98428BAEd` |
+| Kernel | `0x2Ce0cE887De4D0043324C76472f386dC5d454e96` |
+| Repo Globs | `cyberstorm-dev/*`, `cyberstorm-nisto/*` |
 
-**Recent Attested Contributions:**
-- [`49f5d94` docs: complete documentation for all user personas](https://base-sepolia.easscan.org/attestation/view/0x8f4cd9861f2c8d13a6e193a80426b099a36640d180d5ae0155c120b9799af9df)
-- [`6733f4a` feat: UsernameUniqueResolverV2 with 3 roles + verifier](https://base-sepolia.easscan.org/attestation/view/0x7b1ff055295a9d53aef9c80731eabaf1c2e043fc9158f5e0a86bb9082e0bc267)
-- [`52841cf` docs: add resolver and repo registration](https://base-sepolia.easscan.org/attestation/view/0xc2262c30b3d555b00fc834b11a2856a5106c9d68347fd6d770c098c44e5632e2)
+**Identity Attestation:**
+- [View on EASScan](https://base-sepolia.easscan.org/attestation/view/0x90687e9e96de20f386d72c9d84b5c7a641a8476da58a77e610e2a1a1a5769cdf)
 
-Nisto's contributions to didgit.dev are attested on-chain, creating a verifiable history of AI-generated code.
+**Recent Contributions (attested via session key):**
+- Commits automatically attested as Nisto pushes code
+- Attestations owned by Nisto's Kernel (`0x2Ce0...`)
+- Gas paid from Nisto's Kernel balance
 
 ## Multi-Agent Setups
 
 For organizations with multiple agents:
 
-1. **Separate identities** — Each agent gets own GitHub + wallet
-2. **Shared operator** — All wallets controlled by operator multisig
-3. **Scoped access** — Different agents for different repos/tasks
-4. **Central monitoring** — Query all agent attestations by operator
+1. **Separate identities** — Each agent gets own GitHub + Kernel
+2. **Shared verifier** — One verifier backend for all agents
+3. **Per-agent permissions** — Each `.permission-account.json` is agent-specific
+4. **Central monitoring** — Query all agent attestations by Kernel addresses
 
-## Revocation
+## Revoking Access
 
-If an agent is compromised:
+If an agent is compromised or retired:
 
-1. Revoke identity attestation via EAS
-2. Disable repo patterns on resolver
-3. Rotate wallet keys
-4. Create new identity (if continuing operation)
+### 1. Revoke Session Key Permission
+The agent's Kernel owner can remove the verifier's permission:
+
+```typescript
+// Call from agent's EOA
+await kernel.uninstallPlugin(permissionValidatorAddress);
+```
+
+### 2. Revoke Identity Attestation
+Via EAS directly:
+
+```typescript
+await eas.revoke({
+  schema: IDENTITY_SCHEMA_UID,
+  data: { uid: identityAttestationUid }
+});
+```
+
+### 3. Clear Repo Globs
+Revoke the repo globs attestation to stop commit tracking.
 
 ## FAQ
 
-**Can an agent attest its own contributions?**
-Yes, if it controls the wallet. For higher trust, have a separate verifier attest.
+**Can an agent attest its own contributions directly?**
+Yes, if it holds its private key at runtime. Session keys just enable automatic attestation without key exposure.
 
 **How do humans know it's an agent?**
-Convention: include `"agent": true` in proof gist. Future: agent-specific schema field.
+Convention: include `"agent": true` in proof gist. Future: dedicated schema field.
 
-**Can agents vote in DAOs?**
-Depends on DAO rules. Attestations enable contribution-weighted voting that includes agent work.
+**Can agents vote in DAOs based on contributions?**
+Yes! Contribution attestations enable proof-of-work governance. The attestations are owned by the agent, so they can be used for any on-chain verification.
+
+**What if the Kernel runs out of ETH?**
+Attestations fail until funded. Set up monitoring on Kernel balance.
 
 ---
 
-*AI agents are first-class citizens in didgit.dev. Build trust through transparency.*
+*AI agents are first-class citizens in didgit.dev. Build trust through verifiable contribution history.*

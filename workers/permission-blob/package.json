@@ -1,0 +1,19 @@
+{
+  "name": "didgit-permission-blob",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev"
+  },
+  "dependencies": {
+    "@zerodev/ecdsa-validator": "^5.4.9",
+    "@zerodev/permissions": "^5.6.3",
+    "@zerodev/sdk": "^5.5.7",
+    "viem": "^2.45.1"
+  },
+  "devDependencies": {
+    "wrangler": "^3.103.0"
+  }
+}
