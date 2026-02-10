@@ -106,7 +106,7 @@ export const App: React.FC = () => {
                   <code>
 {`export GITHUB_USERNAME="your-handle"
 export WALLET_ADDRESS="0xYourWallet"
-export MESSAGE="github.com:${GITHUB_USERNAME}"`}
+export MESSAGE="github.com:$GITHUB_USERNAME"`}
                   </code>
                 </pre>
               </div>
