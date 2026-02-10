@@ -14,6 +14,9 @@ Put your GitHub activity on-chain. Build portable, verifiable developer reputati
 - A wallet (we'll create one for you if needed via Web3Auth)
 - ~5 minutes
 
+> [!NOTE]
+> Environment variables and chain configuration are documented in `docs/ENV.md` and `docs/CHAINS.md`.
+
 ---
 
 ## Step 1: Connect Your Wallet
