@@ -187,7 +187,7 @@ The UsernameUniqueResolver checks:
 |----------|---------|
 | EAS | `0x4200000000000000000000000000000000000021` |
 | Schema Registry | `0x4200000000000000000000000000000000000020` |
-| UsernameUniqueResolverV2 | `0xd1BA559C6163D3e6Ec88166BB6563f6bF592240B` |
+| UsernameUniqueResolverV2 (Proxy) | `0x9A6F993e73E12Deba899c8856D78c7F05b71167A` |
 | Identity Schema | `0x6ba0509abc1a1ed41df2cce6cbc7350ea21922dae7fcbc408b54150a40be66af` |
 | Permission Schema | `0x6ab56e335e99f78585c89e5535b47c3c90c94c056775dbd28a57490b07e2e9b6` |
 | Repo Globs Schema | `0x79cb78c31678d34847273f605290b2ab56db29a057fdad8facdcc492b9cf2e74` |

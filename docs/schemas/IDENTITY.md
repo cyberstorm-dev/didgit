@@ -78,7 +78,7 @@ This prevents:
 - Linking multiple wallets to the same identity
 - Sybil attacks via identity multiplication
 
-**Resolver (Base mainnet):** `0xd1BA559C6163D3e6Ec88166BB6563f6bF592240B`
+**Resolver (Base mainnet):** `0x9A6F993e73E12Deba899c8856D78c7F05b71167A`
 
 ## Off-Chain Verification (Hardening)
 

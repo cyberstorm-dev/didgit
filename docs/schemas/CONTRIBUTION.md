@@ -78,7 +78,7 @@ await eas.attest({
 
 Before attesting contributions, repos must be registered on-chain via the UsernameUniqueResolver.
 
-**Resolver (Base mainnet):** `0xd1BA559C6163D3e6Ec88166BB6563f6bF592240B`
+**Resolver (Base mainnet):** `0x9A6F993e73E12Deba899c8856D78c7F05b71167A`
 
 ### Setting Patterns
 
