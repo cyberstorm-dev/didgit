@@ -1,6 +1,7 @@
 #!/usr/bin/env npx tsx
 import { createWalletClient, createPublicClient, http, parseEventLogs, getEventSelector } from 'viem';
 import { parseAbi } from 'viem';
+import type { Address, Hex, PublicClient } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { getConfig } from './config';
 
@@ -18,8 +19,8 @@ import { getConfig } from './config';
  */
 
 const ACTIVE = getConfig();
-const SCHEMA_UID = ACTIVE.permissionSchemaUid;
-const EAS = ACTIVE.easAddress;
+const SCHEMA_UID = ACTIVE.permissionSchemaUid as Hex;
+const EAS = ACTIVE.easAddress as Address;
 const ZERO_UID = '0x0000000000000000000000000000000000000000000000000000000000000000';
 const EMPTY_UID = ZERO_UID;
 
@@ -59,21 +60,21 @@ function extractRevertSelector(err: any): string | undefined {
   return undefined;
 }
 
-async function assertSchemaExists(publicClient: ReturnType<typeof createPublicClient>, schemaUid: string) {
+async function assertSchemaExists(publicClient: PublicClient, schemaUid: Hex) {
   console.log('[permission] RPC:', ACTIVE.rpcUrl);
   console.log('[permission] Permission schema UID:', schemaUid);
   const schemaRegistry = await publicClient.readContract({
-    address: EAS as `0x${string}`,
+    address: EAS,
     abi: easRegistryAbi,
     functionName: 'getSchemaRegistry'
-  });
+  }) as Address;
 
   const record = await publicClient.readContract({
-    address: schemaRegistry as `0x${string}`,
+    address: schemaRegistry,
     abi: schemaRegistryAbi,
     functionName: 'getSchema',
-    args: [schemaUid as `0x${string}`]
-  }) as [string, string, boolean, string] | { uid: string; resolver: string; revocable: boolean; schema: string };
+    args: [schemaUid]
+  }) as [Hex, Address, boolean, string] | { uid: Hex; resolver: Address; revocable: boolean; schema: string };
 
   const uid = Array.isArray(record) ? record[0] : record?.uid;
   console.log('[permission] Schema record:', record);
@@ -178,7 +179,7 @@ export async function attestPermission(input: {
   if (!PERMISSION_DATA.startsWith('0x')) throw new Error('PERMISSION_DATA required (0x-prefixed)');
   if (!/^0x[0-9a-fA-F]{64}$/.test(SCHEMA_UID)) throw new Error('permission schema UID must be 32-byte hex');
 
-  const account = privateKeyToAccount(PRIVATE_KEY as `0x${string}`);
+  const account = privateKeyToAccount(PRIVATE_KEY as Hex);
   const walletClient = createWalletClient({ account, chain: ACTIVE.chain, transport: http(ACTIVE.rpcUrl) });
   const publicClient = createPublicClient({ chain: ACTIVE.chain, transport: http(ACTIVE.rpcUrl) });
 
@@ -191,11 +192,11 @@ export async function attestPermission(input: {
   const req = {
     schema: SCHEMA_UID,
     data: {
-      recipient: USER_KERNEL as `0x${string}`,
+      recipient: USER_KERNEL as Address,
       expirationTime: 0n,
       revocable: true,
-      refUID: ZERO_UID,
-      data: PERMISSION_DATA as `0x${string}`,
+      refUID: ZERO_UID as Hex,
+      data: PERMISSION_DATA as Hex,
       value: 0n,
     },
   };
