@@ -1,37 +1,72 @@
-import { baseSepolia } from 'viem/chains';
+import { base, arbitrum } from 'viem/chains';
 
-export type ChainKey = 'base-sepolia';
+export type ChainKey = 'base' | 'arbitrum';
 
-const CHAINS: Record<ChainKey, {
-  chain: typeof baseSepolia;
+type ChainConfig = {
+  name: ChainKey;
+  chain: typeof base | typeof arbitrum;
   chainId: number;
   rpcUrl: string;
   easAddress: string;
   schemaRegistryAddress: string;
+  resolverAddress: string;
   identitySchemaUid: string;
+  contributionSchemaUid: string;
   repoGlobsSchemaUid: string;
   permissionSchemaUid: string;
-  faucetUrl: string;
+  faucetUrl?: string;
+  easGraphql: string;
   explorers: {
-    basescanTx: string;
+    tx: string;
     easAttestation: string;
     easAddress: string;
   };
-}> = {
-  'base-sepolia': {
-    chain: baseSepolia,
-    chainId: 84532,
-    rpcUrl: 'https://sepolia.base.org',
-    easAddress: '0x4200000000000000000000000000000000000021',
-    schemaRegistryAddress: '0x4200000000000000000000000000000000000020',
-    identitySchemaUid: '0x6ba0509abc1a1ed41df2cce6cbc7350ea21922dae7fcbc408b54150a40be66af',
-    repoGlobsSchemaUid: '0x79cb78c31678d34847273f605290b2ab56db29a057fdad8facdcc492b9cf2e74',
-    permissionSchemaUid: '0x6ab56e335e99f78585c89e5535b47c3c90c94c056775dbd28a57490b07e2e9b6',
-    faucetUrl: 'https://www.coinbase.com/faucets/base-sepolia-faucet',
+};
+
+function envOrThrow(name: string, value: string | undefined): string {
+  if (!value) {
+    throw new Error(`Missing required env var: ${name}`);
+  }
+  return value;
+}
+
+const CHAINS: Record<ChainKey, ChainConfig> = {
+  base: {
+    name: 'base',
+    chain: base,
+    chainId: 8453,
+    rpcUrl: process.env.BASE_RPC_URL ?? 'https://mainnet.base.org',
+    easAddress: envOrThrow('BASE_EAS_ADDRESS', process.env.BASE_EAS_ADDRESS),
+    schemaRegistryAddress: envOrThrow('BASE_SCHEMA_REGISTRY_ADDRESS', process.env.BASE_SCHEMA_REGISTRY_ADDRESS),
+    resolverAddress: envOrThrow('BASE_RESOLVER_ADDRESS', process.env.BASE_RESOLVER_ADDRESS),
+    identitySchemaUid: envOrThrow('BASE_IDENTITY_SCHEMA_UID', process.env.BASE_IDENTITY_SCHEMA_UID),
+    contributionSchemaUid: envOrThrow('BASE_CONTRIBUTION_SCHEMA_UID', process.env.BASE_CONTRIBUTION_SCHEMA_UID),
+    repoGlobsSchemaUid: envOrThrow('BASE_REPO_GLOBS_SCHEMA_UID', process.env.BASE_REPO_GLOBS_SCHEMA_UID),
+    permissionSchemaUid: envOrThrow('BASE_PERMISSION_SCHEMA_UID', process.env.BASE_PERMISSION_SCHEMA_UID),
+    easGraphql: 'https://base.easscan.org/graphql',
     explorers: {
-      basescanTx: 'https://sepolia.basescan.org/tx',
-      easAttestation: 'https://base-sepolia.easscan.org/attestation/view',
-      easAddress: 'https://base-sepolia.easscan.org/address'
+      tx: 'https://basescan.org/tx',
+      easAttestation: 'https://base.easscan.org/attestation/view',
+      easAddress: 'https://base.easscan.org/address'
+    }
+  },
+  arbitrum: {
+    name: 'arbitrum',
+    chain: arbitrum,
+    chainId: 42161,
+    rpcUrl: process.env.ARBITRUM_RPC_URL ?? 'https://arb1.arbitrum.io/rpc',
+    easAddress: envOrThrow('ARBITRUM_EAS_ADDRESS', process.env.ARBITRUM_EAS_ADDRESS),
+    schemaRegistryAddress: envOrThrow('ARBITRUM_SCHEMA_REGISTRY_ADDRESS', process.env.ARBITRUM_SCHEMA_REGISTRY_ADDRESS),
+    resolverAddress: envOrThrow('ARBITRUM_RESOLVER_ADDRESS', process.env.ARBITRUM_RESOLVER_ADDRESS),
+    identitySchemaUid: envOrThrow('ARBITRUM_IDENTITY_SCHEMA_UID', process.env.ARBITRUM_IDENTITY_SCHEMA_UID),
+    contributionSchemaUid: envOrThrow('ARBITRUM_CONTRIBUTION_SCHEMA_UID', process.env.ARBITRUM_CONTRIBUTION_SCHEMA_UID),
+    repoGlobsSchemaUid: envOrThrow('ARBITRUM_REPO_GLOBS_SCHEMA_UID', process.env.ARBITRUM_REPO_GLOBS_SCHEMA_UID),
+    permissionSchemaUid: envOrThrow('ARBITRUM_PERMISSION_SCHEMA_UID', process.env.ARBITRUM_PERMISSION_SCHEMA_UID),
+    easGraphql: 'https://arbitrum.easscan.org/graphql',
+    explorers: {
+      tx: 'https://arbiscan.io/tx',
+      easAttestation: 'https://arbitrum.easscan.org/attestation/view',
+      easAddress: 'https://arbitrum.easscan.org/address'
     }
   }
 };
@@ -44,15 +79,19 @@ export const CONFIG = {
   maxKernelTopUpEth: 0.1
 } as const;
 
-export function getConfig(chainKey?: string) {
-  const key = (chainKey || process.env.DIDGIT_CHAIN || 'base-sepolia') as ChainKey;
+export function getChainConfig(chainKey?: string) {
+  const key = (chainKey || process.env.CHAIN || process.env.DIDGIT_CHAIN || 'base') as ChainKey;
   const chain = CHAINS[key];
   if (!chain) {
-    throw new Error(`Unknown DIDGIT_CHAIN: ${key}`);
+    throw new Error(`Unknown CHAIN: ${key}`);
   }
   return {
     ...chain,
     minBalanceEth: CONFIG.minBalanceEth,
     maxKernelTopUpEth: CONFIG.maxKernelTopUpEth
   };
+}
+
+export function getConfig(chainKey?: string) {
+  return getChainConfig(chainKey);
 }

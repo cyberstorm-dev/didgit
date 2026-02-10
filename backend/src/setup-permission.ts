@@ -11,7 +11,6 @@
 
 import 'dotenv/config';
 import { createPublicClient, createWalletClient, http, type Address, type Hex, encodeAbiParameters, parseAbiParameters } from 'viem';
-import { baseSepolia } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 import { 
   createKernelAccount,
@@ -24,12 +23,14 @@ import {
 import { toCallPolicy, CallPolicyVersion } from '@zerodev/permissions/policies';
 import { toECDSASigner } from '@zerodev/permissions/signers';
 import { KERNEL_V3_1, getEntryPoint } from '@zerodev/sdk/constants';
+import { getConfig } from './config';
 
-const EAS_ADDRESS = '0x4200000000000000000000000000000000000021' as Address;
+const ACTIVE = getConfig();
+const EAS_ADDRESS = ACTIVE.easAddress as Address;
 const ATTEST_SELECTOR = '0xf17325e7' as Hex;
 
 // Session Key Permission schema
-const PERMISSION_SCHEMA_UID = '0x6ab56e335e99f78585c89e5535b47c3c90c94c056775dbd28a57490b07e2e9b6' as Hex;
+const PERMISSION_SCHEMA_UID = ACTIVE.permissionSchemaUid as Hex;
 
 const easAbi = [
   {
@@ -66,8 +67,8 @@ const verifierAccount = privateKeyToAccount(VERIFIER_PRIVKEY);
 const userAccount = privateKeyToAccount(USER_PRIVKEY);
 
 const publicClient = createPublicClient({
-  chain: baseSepolia,
-  transport: http()
+  chain: ACTIVE.chain,
+  transport: http(ACTIVE.rpcUrl)
 });
 
 const entryPoint = getEntryPoint('0.7');
@@ -153,8 +154,8 @@ async function main() {
   // Create EAS attestation (user attests their own permission)
   const walletClient = createWalletClient({
     account: userAccount,
-    chain: baseSepolia,
-    transport: http()
+    chain: ACTIVE.chain,
+    transport: http(ACTIVE.rpcUrl)
   });
 
   console.log('\nAttesting permission to EAS...');

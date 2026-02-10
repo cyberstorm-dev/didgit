@@ -75,7 +75,9 @@ export async function attestIdentity(input: {
   const eoaBalanceEth = Number(formatEther(eoaBalance));
   if (eoaBalanceEth < CONFIG.minBalanceEth.eoaForIdentity) {
     console.log('Warning: low EOA balance:', eoaBalanceEth, 'ETH');
+  if (ACTIVE.faucetUrl) {
     console.log('Faucet:', ACTIVE.faucetUrl);
+  }
     throw new Error('Insufficient funds for identity attestation');
   }
 

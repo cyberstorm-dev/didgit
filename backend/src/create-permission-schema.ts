@@ -6,10 +6,11 @@
 
 import 'dotenv/config';
 import { createPublicClient, createWalletClient, http, type Hex } from 'viem';
-import { baseSepolia } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
+import { getConfig } from './config';
 
-const SCHEMA_REGISTRY = '0x4200000000000000000000000000000000000020';
+const ACTIVE = getConfig();
+const SCHEMA_REGISTRY = ACTIVE.schemaRegistryAddress;
 
 const schemaRegistryAbi = [
   {
@@ -31,14 +32,14 @@ async function main() {
   const account = privateKeyToAccount(VERIFIER_PRIVKEY);
   
   const publicClient = createPublicClient({
-    chain: baseSepolia,
-    transport: http()
+    chain: ACTIVE.chain,
+    transport: http(ACTIVE.rpcUrl)
   });
 
   const walletClient = createWalletClient({
     account,
-    chain: baseSepolia,
-    transport: http()
+    chain: ACTIVE.chain,
+    transport: http(ACTIVE.rpcUrl)
   });
 
   // Schema: userKernel, verifier, target, selector, serializedPermission
@@ -62,7 +63,7 @@ async function main() {
   // The schema UID is in the logs
   // For now, check on basescan or EAS explorer
   console.log('\nCheck EAS explorer for schema UID');
-  console.log('https://base-sepolia.easscan.org/address/' + account.address);
+  console.log(`${ACTIVE.explorers.easAddress}/${account.address}`);
 }
 
 main().catch(console.error);

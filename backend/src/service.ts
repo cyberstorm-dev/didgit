@@ -1,5 +1,4 @@
 import { createPublicClient, http, type Address, type Hex, parseAbi } from 'viem';
-import { baseSepolia } from 'viem/chains';
 import { getRecentCommits, getRecentUserPushCommits, matchCommitToGitHubUser, listOrgRepos, listUserRepos, type CommitInfo } from './github';
 import { attestCommitWithSession, type SessionConfig } from './attest-with-session';
 import { getConfig } from './config';
@@ -8,13 +7,13 @@ import { fetchRecentAttestedCommits } from './contributions';
 import { resolveRepoGlobs } from './repo-watch';
 
 const ACTIVE = getConfig();
-const RESOLVER_ADDRESS = '0xf20e5d52acf8fc64f5b456580efa3d8e4dcf16c7' as Address;
-const EAS_ADDRESS = '0x4200000000000000000000000000000000000021' as Address;
-const IDENTITY_SCHEMA_UID = '0x6ba0509abc1a1ed41df2cce6cbc7350ea21922dae7fcbc408b54150a40be66af' as Hex;
-const CONTRIBUTION_SCHEMA_UID = '0x7425c71616d2959f30296d8e013a8fd23320145b1dfda0718ab0a692087f8782' as Hex;
+const RESOLVER_ADDRESS = ACTIVE.resolverAddress as Address;
+const EAS_ADDRESS = ACTIVE.easAddress as Address;
+const IDENTITY_SCHEMA_UID = ACTIVE.identitySchemaUid as Hex;
+const CONTRIBUTION_SCHEMA_UID = ACTIVE.contributionSchemaUid as Hex;
 const REPO_GLOBS_SCHEMA_UID = ACTIVE.repoGlobsSchemaUid as Hex;
-const PERMISSION_SCHEMA_UID = '0x6ab56e335e99f78585c89e5535b47c3c90c94c056775dbd28a57490b07e2e9b6' as Hex;
-const EAS_GRAPHQL = 'https://base-sepolia.easscan.org/graphql';
+const PERMISSION_SCHEMA_UID = ACTIVE.permissionSchemaUid as Hex;
+const EAS_GRAPHQL = ACTIVE.easGraphql;
 
 const resolverAbi = parseAbi([
   'function ownerOf(bytes32 identityHash) view returns (address)',
@@ -47,8 +46,8 @@ export class AttestationService {
 
   constructor() {
     this.publicClient = createPublicClient({
-      chain: baseSepolia,
-      transport: http(baseSepolia.rpcUrls.default.http[0])
+      chain: ACTIVE.chain,
+      transport: http(ACTIVE.rpcUrl)
     });
     this.lastCheckTime = new Date(Date.now() - 24 * 60 * 60 * 1000); // Start 24h ago
     this.attestedCommits = new Set();

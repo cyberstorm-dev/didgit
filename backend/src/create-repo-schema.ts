@@ -1,9 +1,10 @@
 import { createPublicClient, createWalletClient, http, parseAbi, type Address, type Hex, encodeAbiParameters, parseAbiParameters } from 'viem';
-import { baseSepolia } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
+import { getConfig } from './config';
 
-const SCHEMA_REGISTRY = '0x4200000000000000000000000000000000000020' as Address;
-const EAS = '0x4200000000000000000000000000000000000021' as Address;
+const ACTIVE = getConfig();
+const SCHEMA_REGISTRY = ACTIVE.schemaRegistryAddress as Address;
+const EAS = ACTIVE.easAddress as Address;
 const VERIFIER_KEY = process.env.VERIFIER_PRIVKEY as Hex;
 
 // Nisto's identity attestation UID
@@ -21,14 +22,14 @@ async function main() {
   const account = privateKeyToAccount(VERIFIER_KEY);
   
   const publicClient = createPublicClient({
-    chain: baseSepolia,
-    transport: http()
+    chain: ACTIVE.chain,
+    transport: http(ACTIVE.rpcUrl)
   });
   
   const walletClient = createWalletClient({
     account,
-    chain: baseSepolia,
-    transport: http()
+    chain: ACTIVE.chain,
+    transport: http(ACTIVE.rpcUrl)
   });
 
   // Schema: repoGlobs (comma-separated patterns like "org/*,user/repo")

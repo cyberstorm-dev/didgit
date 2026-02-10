@@ -13,7 +13,6 @@
 
 import 'dotenv/config';
 import { createPublicClient, createWalletClient, http, type Address, type Hex } from 'viem';
-import { baseSepolia } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 import { 
   createKernelAccount,
@@ -28,8 +27,10 @@ import { toCallPolicy, CallPolicyVersion } from '@zerodev/permissions/policies';
 import { toECDSASigner } from '@zerodev/permissions/signers';
 import { KERNEL_V3_1, getEntryPoint } from '@zerodev/sdk/constants';
 import { http as viemHttp } from 'viem';
+import { getConfig } from './config';
 
-const EAS_ADDRESS = '0x4200000000000000000000000000000000000021' as Address;
+const ACTIVE = getConfig();
+const EAS_ADDRESS = ACTIVE.easAddress as Address;
 const ATTEST_SELECTOR = '0xf17325e7' as Hex; // attest((bytes32,(address,uint64,bool,bytes32,bytes,uint256)))
 
 async function main() {
@@ -48,8 +49,8 @@ async function main() {
   console.log('[setup] Verifier:', verifierAccount.address);
 
   const publicClient = createPublicClient({
-    chain: baseSepolia,
-    transport: http()
+    chain: ACTIVE.chain,
+    transport: http(ACTIVE.rpcUrl)
   });
 
   const entryPoint = getEntryPoint('0.7');
@@ -81,8 +82,8 @@ async function main() {
     
     const walletClient = createWalletClient({
       account: verifierAccount,
-      chain: baseSepolia,
-      transport: http()
+      chain: ACTIVE.chain,
+      transport: http(ACTIVE.rpcUrl)
     });
 
     const fundTx = await walletClient.sendTransaction({
