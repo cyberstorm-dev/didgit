@@ -47,6 +47,9 @@ export BASE_REPO_GLOBS_SCHEMA_UID=0x79cb78c31678d34847273f605290b2ab56db29a057fd
 > [!WARNING]
 > Repo globs prefixed with `*/` (including `*/*` and `*/repo`) are **not supported** and will be rejected. The attestor relies on public GitHub events for `owner/*` patterns and cannot resolve global wildcards reliably.
 
+> [!NOTE]
+> If you don’t register repo globs, the attestor defaults to `username/*` for your GitHub username.
+
 ## Where to Verify
 
 - EAS Explorer: https://base.easscan.org/

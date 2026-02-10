@@ -218,11 +218,9 @@ export class AttestationService {
           seenUsernames.add(username.toLowerCase());
 
           const repoGlobs = globsByIdentity.get(att.id.toLowerCase()) || [];
-          
-          // Only include users with repo globs registered
+          const effectiveGlobs = repoGlobs.length > 0 ? repoGlobs : [`${username}/*`];
           if (repoGlobs.length === 0) {
-            console.log(`[service] Skipping ${username}: no repo globs registered`);
-            continue;
+            console.log(`[service] Defaulting ${username} repo globs to ${effectiveGlobs.join(', ')}`);
           }
 
           const walletAddress = att.recipient as Address;
@@ -233,10 +231,10 @@ export class AttestationService {
             walletAddress,
             kernelAddress,
             identityAttestationUid: att.id as Hex,
-            repoGlobs
+            repoGlobs: effectiveGlobs
           });
 
-          console.log(`[service] Found user: ${username} with globs: ${repoGlobs.join(', ')}`);
+          console.log(`[service] Found user: ${username} with globs: ${effectiveGlobs.join(', ')}`);
         } catch {}
       }
 

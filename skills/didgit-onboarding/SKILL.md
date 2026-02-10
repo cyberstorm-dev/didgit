@@ -168,6 +168,9 @@ Examples:
 > [!WARNING]  
 > `*/*` and `*/repo` patterns are **not supported**. They can't be resolved reliably from public GitHub events, so the attestor rejects any glob prefixed with `*/`.
 
+> [!NOTE]  
+> If you skip this step, the attestor defaults to `username/*` for your GitHub username.
+
 ---
 
 ## Troubleshooting
