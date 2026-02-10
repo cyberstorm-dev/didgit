@@ -29,7 +29,7 @@ const easAbi = parseAbi([
   'event Attested(address indexed recipient, address indexed attester, bytes32 indexed uid, bytes32 schema)'
 ]);
 
-async function computeKernelAddress(publicClient: ReturnType<typeof createPublicClient>, userEOA: Address) {
+async function computeKernelAddress(publicClient: any, userEOA: Address) {
   const entryPoint = getEntryPoint('0.7');
   const dummySigner = toAccount({
     address: userEOA,
