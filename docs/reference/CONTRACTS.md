@@ -18,7 +18,10 @@ Contract addresses, ABIs, and deployment information.
 |----------|---------|----------|
 | EAS | `0x4200000000000000000000000000000000000021` | [View](https://basescan.org/address/0x4200000000000000000000000000000000000021) |
 | SchemaRegistry | `0x4200000000000000000000000000000000000020` | [View](https://basescan.org/address/0x4200000000000000000000000000000000000020) |
-| UsernameUniqueResolverV2 | *Coming soon* | — |
+| UsernameUniqueResolverV2 | `0xd1BA559C6163D3e6Ec88166BB6563f6bF592240B` | [View](https://basescan.org/address/0xd1BA559C6163D3e6Ec88166BB6563f6bF592240B) |
+
+> [!NOTE]
+> Base mainnet resolver is currently the implementation address (no proxy yet).
 
 **Base Mainnet Roles (V2)**
 

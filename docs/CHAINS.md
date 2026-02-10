@@ -9,7 +9,7 @@ Default chain is **Base mainnet**. Override with `CHAIN=arbitrum`.
 - `rpcUrl`: `https://mainnet.base.org` (override with `BASE_RPC_URL`)
 - `easAddress`: `0x4200000000000000000000000000000000000021` (`BASE_EAS_ADDRESS`)
 - `schemaRegistryAddress`: `0x4200000000000000000000000000000000000020` (`BASE_SCHEMA_REGISTRY_ADDRESS`)
-- `resolverAddress`: **TBD** (`BASE_RESOLVER_ADDRESS`)
+- `resolverAddress`: `0xd1BA559C6163D3e6Ec88166BB6563f6bF592240B` (`BASE_RESOLVER_ADDRESS`)
 - `schemaUids`:
   - `identity`: `0x6ba0509abc1a1ed41df2cce6cbc7350ea21922dae7fcbc408b54150a40be66af` (`BASE_IDENTITY_SCHEMA_UID`)
   - `contribution`: `0x7425c71616d2959f30296d8e013a8fd23320145b1dfda0718ab0a692087f8782` (`BASE_CONTRIBUTION_SCHEMA_UID`)
