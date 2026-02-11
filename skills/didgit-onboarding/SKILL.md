@@ -150,7 +150,7 @@ Optional:
 
 ## Step 7: Register repo globs
 
-Your identity attestation UID from Step 4 is required as `IDENTITY_UID`.
+Your identity attestation UID from Step 4 is required as `IDENTITY_UID`. In the onboarding output, use the **first UID** that appears right after the identity attestation TX (not the permission UID).
 
 ```bash
 cd backend
