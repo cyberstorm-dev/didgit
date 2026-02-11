@@ -49,7 +49,7 @@ async function sleep(ms: number) {
   await new Promise((r) => setTimeout(r, ms));
 }
 
-async function requestWithRetry<T>(fn: () => Promise<T>, label: string): Promise<T> {
+async function requestWithRetry<T = any>(fn: () => Promise<T>, label: string): Promise<T> {
   const maxAttempts = Number(process.env.GITHUB_RETRY_ATTEMPTS || '3');
   const baseDelayMs = Number(process.env.GITHUB_RETRY_DELAY_MS || '500');
   const abuseMinMs = Number(process.env.GITHUB_ABUSE_RETRY_MS || '30000');
@@ -97,7 +97,7 @@ export async function getRecentCommits(
 ): Promise<CommitInfo[]> {
   const octokit = await getOctokit();
 
-  const { data: commits } = await requestWithRetry(
+  const { data: commits } = await requestWithRetry<any>(
     () =>
       octokit.repos.listCommits({
         owner,
@@ -108,7 +108,7 @@ export async function getRecentCommits(
     `listCommits ${owner}/${repo}`
   );
 
-  return commits.map(commit => ({
+  return commits.map((commit: any) => ({
     sha: commit.sha,
     author: {
       email: commit.commit.author?.email || '',
@@ -154,7 +154,7 @@ export function parsePushEventsToCommits(events: any[]): CommitInfo[] {
 
 export async function getRecentUserPushCommits(username: string, since?: Date): Promise<CommitInfo[]> {
   const octokit = await getOctokit();
-  const { data: events } = await requestWithRetry(
+  const { data: events } = await requestWithRetry<any>(
     () =>
       octokit.activity.listPublicEventsForUser({
         username,
@@ -172,7 +172,7 @@ export async function getRecentUserPushCommits(username: string, since?: Date): 
 export async function getRecentOwnerPushCommits(owner: string, since?: Date): Promise<CommitInfo[]> {
   const octokit = await getOctokit();
 
-  const { data: userEvents } = await requestWithRetry(
+  const { data: userEvents } = await requestWithRetry<any>(
     () =>
       octokit.activity.listPublicEventsForUser({
         username: owner,
@@ -184,7 +184,7 @@ export async function getRecentOwnerPushCommits(owner: string, since?: Date): Pr
   let commits = parsePushEventsToCommits(userEvents as any[]);
   if (commits.length === 0) {
     try {
-      const { data: orgEvents } = await requestWithRetry(
+      const { data: orgEvents } = await requestWithRetry<any>(
         () =>
           octokit.activity.listPublicOrgEvents({
             org: owner,
@@ -211,7 +211,7 @@ export async function getCommit(
   try {
     const octokit = await getOctokit();
 
-    const { data: commit } = await requestWithRetry(
+    const { data: commit } = await requestWithRetry<any>(
       () =>
         octokit.repos.getCommit({
           owner,
@@ -263,7 +263,7 @@ export async function listOrgRepos(org: string): Promise<{ owner: string; name: 
     let page = 1;
     
     while (true) {
-      const { data } = await requestWithRetry(
+      const { data } = await requestWithRetry<any>(
         () =>
           octokit.repos.listForOrg({
             org,
@@ -276,7 +276,7 @@ export async function listOrgRepos(org: string): Promise<{ owner: string; name: 
       
       if (data.length === 0) break;
       
-      repos.push(...data.map(r => ({ owner: org, name: r.name })));
+      repos.push(...data.map((r: any) => ({ owner: org, name: r.name })));
       page++;
       
       if (data.length < 100) break;
@@ -305,7 +305,7 @@ export async function listUserRepos(username: string): Promise<{ owner: string; 
     let page = 1;
     
     while (true) {
-      const { data } = await requestWithRetry(
+      const { data } = await requestWithRetry<any>(
         () =>
           octokit.repos.listForUser({
             username,
@@ -318,7 +318,7 @@ export async function listUserRepos(username: string): Promise<{ owner: string; 
       
       if (data.length === 0) break;
       
-      repos.push(...data.map(r => ({ owner: username, name: r.name })));
+      repos.push(...data.map((r: any) => ({ owner: username, name: r.name })));
       page++;
       
       if (data.length < 100) break;
