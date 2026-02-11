@@ -1,4 +1,12 @@
-import { Octokit } from '@octokit/rest';
+let OctokitCtor: any;
+
+async function getOctokit() {
+  if (!OctokitCtor) {
+    const mod = await import('@octokit/rest');
+    OctokitCtor = mod.Octokit;
+  }
+  return new OctokitCtor({ auth: getGitHubToken() });
+}
 
 export function shouldRetryGitHubError(err: any): boolean {
   const status = err?.status ?? err?.response?.status;
@@ -87,7 +95,7 @@ export async function getRecentCommits(
   repo: string,
   since?: Date
 ): Promise<CommitInfo[]> {
-  const octokit = new Octokit({ auth: getGitHubToken() });
+  const octokit = await getOctokit();
 
   const { data: commits } = await requestWithRetry(
     () =>
@@ -145,7 +153,7 @@ export function parsePushEventsToCommits(events: any[]): CommitInfo[] {
 }
 
 export async function getRecentUserPushCommits(username: string, since?: Date): Promise<CommitInfo[]> {
-  const octokit = new Octokit({ auth: getGitHubToken() });
+  const octokit = await getOctokit();
   const { data: events } = await requestWithRetry(
     () =>
       octokit.activity.listPublicEventsForUser({
@@ -162,7 +170,7 @@ export async function getRecentUserPushCommits(username: string, since?: Date): 
 }
 
 export async function getRecentOwnerPushCommits(owner: string, since?: Date): Promise<CommitInfo[]> {
-  const octokit = new Octokit({ auth: getGitHubToken() });
+  const octokit = await getOctokit();
 
   const { data: userEvents } = await requestWithRetry(
     () =>
@@ -201,7 +209,7 @@ export async function getCommit(
   sha: string
 ): Promise<CommitInfo | null> {
   try {
-    const octokit = new Octokit({ auth: getGitHubToken() });
+    const octokit = await getOctokit();
 
     const { data: commit } = await requestWithRetry(
       () =>
@@ -248,7 +256,7 @@ export function matchCommitToGitHubUser(commit: CommitInfo): string | null {
  * List all public repos in an organization
  */
 export async function listOrgRepos(org: string): Promise<{ owner: string; name: string }[]> {
-  const octokit = new Octokit({ auth: getGitHubToken() });
+  const octokit = await getOctokit();
 
   try {
     const repos: { owner: string; name: string }[] = [];
@@ -290,7 +298,7 @@ export async function listOrgRepos(org: string): Promise<{ owner: string; name: 
  * List repos for a user
  */
 export async function listUserRepos(username: string): Promise<{ owner: string; name: string }[]> {
-  const octokit = new Octokit({ auth: getGitHubToken() });
+  const octokit = await getOctokit();
 
   try {
     const repos: { owner: string; name: string }[] = [];
