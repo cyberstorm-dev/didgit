@@ -107,7 +107,7 @@ export async function runOnboard(options: RunOnboardOptions = {}) {
     }
   }
 
-  await attestIdentityFn({
+  const identityResult = await attestIdentityFn({
     privateKey: inputs.privateKey,
     githubUsername: inputs.githubUsername,
     walletAddress,
@@ -115,11 +115,15 @@ export async function runOnboard(options: RunOnboardOptions = {}) {
     gistUrl
   });
 
-  await permissionSetupFn({
+  const permissionResult = await permissionSetupFn({
     privateKey: inputs.privateKey
   });
 
-  return { gistUrl, walletAddress };
+  console.log('Identity UID:', identityResult?.uid);
+  if (permissionResult?.permissionUid) {
+    console.log('Permission UID:', permissionResult.permissionUid);
+  }
+  return { gistUrl, walletAddress, identityUid: identityResult?.uid, kernelAddress: permissionResult?.kernelAddress };
 }
 
 async function main() {

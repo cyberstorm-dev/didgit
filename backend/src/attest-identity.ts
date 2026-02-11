@@ -137,8 +137,8 @@ export async function attestIdentity(input: {
   const receipt = await publicClient.waitForTransactionReceipt({ hash: tx });
   const uid = extractAttestationUid(receipt.logs as any, EAS);
 
-  console.log('TX:', tx);
-  console.log('UID:', uid);
+  console.log('Identity TX:', tx);
+  console.log('Identity UID:', uid);
   console.log('Basescan URL:', `${ACTIVE.explorers.tx}/${tx}`);
   if (uid) {
     console.log('EASscan URL:', `${ACTIVE.explorers.easAttestation}/${uid}`);

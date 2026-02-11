@@ -169,7 +169,7 @@ export async function attestPermission(input: {
   privateKey: string;
   kernelAddress: string;
   permissionData: string;
-}) {
+}): Promise<{ tx: Hex; uid?: Hex }> {
   const PRIVATE_KEY = input.privateKey.trim();
   const USER_KERNEL = input.kernelAddress.trim();
   const PERMISSION_DATA = input.permissionData.trim();
@@ -215,15 +215,16 @@ export async function attestPermission(input: {
     }
     throw err;
   }
-  console.log('TX', tx);
+  console.log('Permission TX', tx);
   const rc = await publicClient.waitForTransactionReceipt({ hash: tx });
   const uid = extractAttestationUid(rc.logs as any, EAS);
-  console.log('UID', uid);
+  console.log('Permission UID', uid);
   console.log('Basescan URL:', `${ACTIVE.explorers.tx}/${tx}`);
   if (uid) {
     console.log('EASscan URL:', `${ACTIVE.explorers.easAttestation}/${uid}`);
   }
   console.log('EASscan Address:', `${ACTIVE.explorers.easAddress}/${USER_KERNEL}`);
+  return { tx, uid: uid as Hex | undefined };
 }
 
 async function main() {

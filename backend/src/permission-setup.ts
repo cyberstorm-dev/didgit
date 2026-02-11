@@ -11,7 +11,7 @@ type RunOptions = {
   apiKey?: string;
   kernelAddress?: string;
   fetchFn?: FetchFn;
-  attestFn?: (args: { privateKey: string; kernelAddress: string; permissionData: string }) => Promise<void>;
+  attestFn?: (args: { privateKey: string; kernelAddress: string; permissionData: string }) => Promise<{ tx: string; uid?: string }>;
   maxRetries?: number;
   retryDelayMs?: number;
 };
@@ -111,7 +111,7 @@ export async function runPermissionSetup(opts: RunOptions = {}) {
   }, { maxRetries, retryDelayMs });
   const completeJson = await completeRes.json() as { permissionData: string; kernelAddress: string };
 
-  await attestFn({
+  const permissionAttestation = await attestFn({
     privateKey,
     kernelAddress: completeJson.kernelAddress,
     permissionData: completeJson.permissionData
@@ -119,13 +119,17 @@ export async function runPermissionSetup(opts: RunOptions = {}) {
 
   return {
     permissionData: completeJson.permissionData,
-    kernelAddress: completeJson.kernelAddress
+    kernelAddress: completeJson.kernelAddress,
+    permissionUid: permissionAttestation?.uid
   };
 }
 
 async function main() {
   const result = await runPermissionSetup();
   console.log('Kernel:', result.kernelAddress);
+  if (result.permissionUid) {
+    console.log('Permission UID:', result.permissionUid);
+  }
   console.log('PERMISSION_DATA:', result.permissionData);
 }
 
