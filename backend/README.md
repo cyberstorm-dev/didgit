@@ -5,18 +5,33 @@ Attestation service for didgit.dev - attests GitHub commits on-chain via EAS.
 ## Setup
 
 ```bash
-npm install
-cp .env.example .env
-# Edit .env with your keys
+pnpm install
+# Optional: create .env and add required vars
 ```
 
 ## Environment Variables
 
 ```bash
+# Runtime (attestor)
 GITHUB_TOKEN=ghp_...           # GitHub token for API access
-ATTESTER_PRIVKEY=0x...         # Attester wallet (signs permission/UserOps)
+ATTESTER_PRIVKEY=0x...         # Attester key (signs UserOps)
 BUNDLER_RPC=https://...        # ZeroDev bundler RPC
-OWNER_PRIVKEY=0x...            # Schema registrar / deployer (mainnet setup)
+ATTEST_LOOKBACK_DAYS=7         # Lookback window for commits (default 7)
+ATTEST_FALLBACK_REPO_SCAN=1    # Optional: scan repos when events are empty
+
+# Chain config (Base mainnet)
+CHAIN=base
+BASE_RPC_URL=https://base.api.pocket.network
+BASE_EAS_ADDRESS=0x4200000000000000000000000000000000000021
+BASE_SCHEMA_REGISTRY_ADDRESS=0x4200000000000000000000000000000000000020
+BASE_RESOLVER_ADDRESS=0x9A6F993e73E12Deba899c8856D78c7F05b71167A
+BASE_IDENTITY_SCHEMA_UID=0x6ba0509abc1a1ed41df2cce6cbc7350ea21922dae7fcbc408b54150a40be66af
+BASE_CONTRIBUTION_SCHEMA_UID=0x7425c71616d2959f30296d8e013a8fd23320145b1dfda0718ab0a692087f8782
+BASE_PERMISSION_SCHEMA_UID=0x6ab56e335e99f78585c89e5535b47c3c90c94c056775dbd28a57490b07e2e9b6
+BASE_REPO_GLOBS_SCHEMA_UID=0x79cb78c31678d34847273f605290b2ab56db29a057fdad8facdcc492b9cf2e74
+
+# One-time (schema registration)
+OWNER_PRIVKEY=0x...            # Schema registrar / deployer
 ```
 
 ## User Onboarding (Session Key Setup)
@@ -48,12 +63,12 @@ Coming soon: WalletConnect web flow
 
 ### Single run (for testing/cron)
 ```bash
-npm run attest
+pnpm run attest:once
 ```
 
 ### Daemon mode (watches continuously)
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 ## How It Works
@@ -89,7 +104,7 @@ Attestations from user's Kernel address
 - `src/run-once.ts` - Single-run entry point
 - `src/index.ts` - Daemon entry point
 
-## Schemas (Base Sepolia)
+## Schemas (Base Mainnet)
 
 - Identity: `0x6ba0509abc1a1ed41df2cce6cbc7350ea21922dae7fcbc408b54150a40be66af`
 - Contribution: `0x7425c71616d2959f30296d8e013a8fd23320145b1dfda0718ab0a692087f8782`
