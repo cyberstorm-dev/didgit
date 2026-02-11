@@ -51,7 +51,7 @@ This script auto-signs, creates the gist if a PAT is available, submits the iden
 and then sets up the permission (session key) automatically.
 
 ```bash
-cd /Users/allenday/src/didgit/backend
+cd backend
 
 # Required chain config (Base mainnet)
 export CHAIN=base
@@ -153,11 +153,11 @@ Optional:
 Your identity attestation UID from Step 4 is required as `IDENTITY_UID`.
 
 ```bash
-cd /Users/allenday/src/didgit/backend
+cd backend
 
 PRIVATE_KEY=$PRIVATE_KEY \
 IDENTITY_UID=0x<IDENTITY_ATTESTATION_UID> \
-REPO_GLOBS="cyberstorm-dev/*,allenday/*" \
+REPO_GLOBS="$USER/*" \
 pnpm run repo:register
 ```
 
