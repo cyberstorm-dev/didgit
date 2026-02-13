@@ -70,24 +70,27 @@ export const App: React.FC = () => {
           <div className="container">
             <div className="section-header">
               <h2>Network Stats</h2>
-              <p>Dune dashboards will live here. Replace with an embed when ready.</p>
+              <p>Live Dune snapshots (WIP).</p>
             </div>
             <div className="dune-grid">
               <div className="dune-card">
-                <div className="dune-title">Identity attestations</div>
-                <div className="dune-placeholder">Dune chart embed</div>
+                <div className="dune-title">Total verified developers</div>
+                <iframe
+                  className="dune-embed"
+                  title="Total verified developers"
+                  src="https://dune.com/embeds/6692291/10537755?darkMode=true"
+                  loading="lazy"
+                />
               </div>
               <div className="dune-card">
-                <div className="dune-title">Commit attestations</div>
-                <div className="dune-placeholder">Dune chart embed</div>
+                <div className="dune-title">Cumulative commit attestations</div>
+                <iframe
+                  className="dune-embed"
+                  title="Cumulative commit attestations"
+                  src="https://dune.com/embeds/6692325/10537837?darkMode=true"
+                  loading="lazy"
+                />
               </div>
-              <div className="dune-card">
-                <div className="dune-title">Active verified developers</div>
-                <div className="dune-placeholder">Dune chart embed</div>
-              </div>
-            </div>
-            <div className="dune-note">
-              Placeholder: replace the cards above with a Dune iframe embed.
             </div>
           </div>
         </section>
