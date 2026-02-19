@@ -1,0 +1,14 @@
+{
+  "name": "didgit",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "viem": "^2.45.1"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.9"
+  }
+}

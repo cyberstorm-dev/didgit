@@ -5,82 +5,67 @@ Command-line scripts for managing didgit.dev identity bindings on Base Sepolia.
 ## Prerequisites
 
 ```bash
-npm install viem
+npm install --no-package-lock
 export WALLET_PRIVATE_KEY=0x...
 ```
+
+Environment fallbacks:
+- `DIDGIT_ATTESTATION_UID` – identity attestation UID
+- `DIDGIT_USERNAME` – GitHub username (without domain)
+- `DIDGIT_WALLET` – wallet address for the identity
 
 ## Scripts
 
 ### bind-identity.mjs
 
-Binds an existing EAS attestation to the UsernameUniqueResolver contract.
-
-**When to use:** After creating an identity attestation via the web app or API, run this to register it in the resolver. This enables contribution attestations and automatically sets the `*/*` repository pattern.
+Bind an existing EAS attestation to the resolver (requires wallet key). Prompts before writing because the resolver **automatically enables the `*/*` pattern**.
 
 ```bash
-node bind-identity.mjs
+node bind-identity.mjs \
+  --attestation 0x... \
+  --username alice \
+  --wallet 0xYourWallet \
+  --rpc-url https://sepolia.base.org \
+  --resolver 0x20c1cb4313efc28d325d3a893a68ca8c82911b0c \
+  --yes            # optional, skip confirmation
 ```
 
-**What it does:**
-1. Calls `bindIdentity(attestationUid, wallet, domain, username)` on the resolver
-2. Automatically registers the `*/*` pattern (all repos in all orgs)
-3. Verifies the binding was successful
+Dry run (encode calldata without sending):
+
+```bash
+node bind-identity.mjs --attestation 0x... --username alice --wallet 0xYourWallet --dry-run
+```
 
 ### verify-binding.mjs
 
-Checks if an identity is bound in the resolver.
+Check the current binding and registered patterns.
 
 ```bash
-node verify-binding.mjs
+node verify-binding.mjs --username alice --resolver 0x20c1cb... --rpc-url https://sepolia.base.org
+node verify-binding.mjs --username alice --expected 0xYourWallet
 ```
-
-**Output:**
-- Identity owner (wallet address for username)
-- Binding status
 
 ### check-my-patterns.mjs
 
-Lists all repository patterns registered for your identity.
+List repository patterns for an identity.
 
 ```bash
-node check-my-patterns.mjs
+node check-my-patterns.mjs --username alice --resolver 0x20c1cb...
 ```
 
-**Output:**
-- All registered patterns (e.g., `*/*`, `cyberstorm-dev/*`, etc.)
-- Enabled/disabled status for each pattern
+## Notes
 
-## Architecture Notes
+- Default domain: `github.com`
+- Default RPC: `https://sepolia.base.org`
+- Default resolver: `0x20c1cb4313efc28d325d3a893a68ca8c82911b0c`
+- All scripts are chain-agnostic; override `--resolver` and `--rpc-url` for other deployments.
 
-### Why Two Steps?
+## Examples
 
-1. **EAS Attestation** - Creates the cryptographic proof (signature + gist)
-2. **Resolver Binding** - Registers the attestation on-chain for uniqueness enforcement
+Demonstration commands use placeholders only—replace with your attestation UID, wallet, and username before running:
 
-The resolver ensures:
-- One username → one wallet (no squatting)
-- One wallet → one username (no multi-claiming)
-- Repository patterns are tracked per identity
-
-### Automatic `*/*` Registration
-
-When `bindIdentity()` is called, the contract automatically enables the `*/*` pattern:
-
-```solidity
-bytes32 wildcardPatternKey = _patternKey("*", "*");
-repoPatterns[identityKey][wildcardPatternKey] = true;
+```bash
+node bind-identity.mjs --attestation 0x0123...abcd --username your-handle --wallet 0xabc...123 --yes
+node verify-binding.mjs --username your-handle --expected 0xabc...123
+node check-my-patterns.mjs --username your-handle
 ```
-
-This allows immediate contribution attestations to any repo without manual pattern setup.
-
-## Contract Addresses
-
-- **Resolver:** `0x20c1cb4313efc28d325d3a893a68ca8c82911b0c`
-- **EAS:** `0x4200000000000000000000000000000000000021`
-- **Network:** Base Sepolia
-
-## Related Docs
-
-- [Identity Schema](../../docs/schemas/IDENTITY.md)
-- [Contribution Schema](../../docs/schemas/CONTRIBUTION.md)
-- [Contract Reference](../../docs/reference/CONTRACTS.md)

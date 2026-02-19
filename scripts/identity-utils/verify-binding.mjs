@@ -1,87 +1,46 @@
 #!/usr/bin/env node
-import { createPublicClient, http } from 'viem';
-import { baseSepolia } from 'viem/chains';
-
-const RESOLVER_ADDRESS = '0x20c1cb4313efc28d325d3a893a68ca8c82911b0c';
-const RPC_URL = 'https://sepolia.base.org';
-const MY_WALLET = '0x7a1de0Fa7242194bbA84E915f39bF7E621B50d2E';
-
-const RESOLVER_ABI = [
-  {
-    type: 'function',
-    name: 'getIdentityOwner',
-    inputs: [
-      { name: 'domain', type: 'string' },
-      { name: 'identifier', type: 'string' }
-    ],
-    outputs: [{ name: 'owner', type: 'address' }],
-    stateMutability: 'view'
-  },
-  {
-    type: 'function',
-    name: 'getRepositoryPatterns',
-    inputs: [
-      { name: 'domain', type: 'string' },
-      { name: 'identifier', type: 'string' }
-    ],
-    outputs: [{
-      name: 'patterns',
-      type: 'tuple[]',
-      components: [
-        { name: 'namespace', type: 'string' },
-        { name: 'name', type: 'string' },
-        { name: 'enabled', type: 'bool' }
-      ]
-    }],
-    stateMutability: 'view'
-  }
-];
+import {
+  createPublicResolverClient,
+  identitySummary,
+  parseCliArgs,
+  readIdentity,
+  validateAddress,
+  validateDomain,
+  validateRpcUrl,
+  validateUsername,
+} from './lib.js';
+import { DEFAULT_RESOLVER_ADDRESS, DEFAULT_RPC_URL } from './shared.js';
 
 async function main() {
-  const client = createPublicClient({
-    chain: baseSepolia,
-    transport: http(RPC_URL)
-  });
+  const args = parseCliArgs();
 
-  console.log('🔍 Verifying identity binding...\n');
+  const username = validateUsername(args.username || process.env.DIDGIT_USERNAME);
+  const domain = validateDomain(args.domain);
+  const resolverAddress = validateAddress(args.resolver || DEFAULT_RESOLVER_ADDRESS, 'resolver address');
+  const rpcUrl = validateRpcUrl(args.rpcUrl || DEFAULT_RPC_URL);
+  const expected = args.expected ? validateAddress(args.expected, 'expected wallet') : null;
 
-  try {
-    const owner = await client.readContract({
-      address: RESOLVER_ADDRESS,
-      abi: RESOLVER_ABI,
-      functionName: 'getIdentityOwner',
-      args: ['github.com', 'loki-cyberstorm']
-    });
+  const publicClient = createPublicResolverClient({ rpcUrl });
 
-    console.log(`✅ Identity bound:`);
-    console.log(`   github.com:loki-cyberstorm -> ${owner}`);
-    console.log(`   Expected: ${MY_WALLET}`);
-    console.log(`   Match: ${owner.toLowerCase() === MY_WALLET.toLowerCase() ? '✅' : '❌'}`);
-  } catch (error) {
-    console.log(`❌ getIdentityOwner failed: ${error.message}`);
-    process.exit(1);
+  const { owner, patterns } = await readIdentity({ publicClient, resolverAddress, domain, username });
+
+  console.log(`🔍 Identity: ${identitySummary({ domain, username, wallet: owner })}`);
+  if (expected) {
+    const match = owner.toLowerCase() === expected.toLowerCase();
+    console.log(`Expected: ${expected} (${match ? 'match' : 'mismatch'})`);
   }
 
-  console.log();
-
-  try {
-    const patterns = await client.readContract({
-      address: RESOLVER_ADDRESS,
-      abi: RESOLVER_ABI,
-      functionName: 'getRepositoryPatterns',
-      args: ['github.com', 'loki-cyberstorm']
+  if (patterns.length) {
+    console.log('\n📦 Repository patterns:');
+    patterns.forEach((p) => {
+      console.log(` - ${p.enabled ? '✅' : '❌'} ${p.namespace}/${p.name}`);
     });
-
-    console.log(`✅ Repository patterns:`);
-    patterns.forEach(p => {
-      const status = p.enabled ? '✅' : '❌';
-      console.log(`   ${status} ${p.namespace}/${p.name}`);
-    });
-
-    console.log('\n🎉 Success! Loki can now attest contributions to registered repos.');
-  } catch (error) {
-    console.log(`❌ getRepositoryPatterns failed: ${error.message}`);
+  } else {
+    console.log('\n📦 Repository patterns: none registered');
   }
 }
 
-main();
+main().catch((err) => {
+  console.error('❌ Error:', err.message);
+  process.exitCode = 1;
+});
